@@ -6,8 +6,8 @@ services:
     buildCommand: "python -m py_compile server.py"
     startCommand: "python server.py"
     healthCheckPath: /healthz
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.8
-      - key: ADMIN_PASSWORD
-        generateValue: true
+envVars:
+  - key: PYTHON_VERSION
+    value: 3.12.8
+  - key: ADMIN_PASSWORD
+    value: Admin@123
