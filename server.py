@@ -62,10 +62,16 @@ def init_db():
             connection.execute("INSERT INTO admins VALUES (?, ?)", ("admin", hash_password(password)))
 
 def ensure_admin():
+    configured_password = os.environ.get("ADMIN_PASSWORD")
     with connect() as connection:
-        if connection.execute("SELECT 1 FROM admins WHERE username = 'admin'").fetchone():
+        admin = connection.execute("SELECT 1 FROM admins WHERE username = 'admin'").fetchone()
+        if admin and configured_password:
+            connection.execute(
+                "UPDATE admins SET password_hash = ? WHERE username = 'admin'",
+                (hash_password(configured_password),),
+            )
             return
-        password = os.environ.get("ADMIN_PASSWORD") or secrets.token_urlsafe(12)
+        password = configured_password or secrets.token_urlsafe(12)
         connection.execute(
             "INSERT INTO admins (username, password_hash) VALUES (?, ?)",
             ("admin", hash_password(password)),
