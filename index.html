@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SURYA Hospital Multi Super Speciality</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+
+    :root{
+      --bg:#f4f7fb;
+      --panel:#ffffff;
+      --panel-alt:#f7f9fe;
+      --primary:#1b9aaa;
+      --secondary:#1b9aaa;
+      --primary-2:#0e7ca7;
+      --success:#27ae60;
+      --warning:#f6b73c;
+      --danger:#ef5a5a;
+      --purple:#7a8ef5;
+      --text:#1f2937;
+      --muted:#7b879d;
+      --line:#e6ebf3;
+      --shadow:0 12px 30px rgba(30,41,59,.08);
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--bg);color:var(--text)}
+    body{min-height:100vh}
+    button,input,select{font:inherit}
+    .app{display:flex;min-height:100vh}
+    .sidebar{
+      width:250px;background:linear-gradient(180deg,#0f172a,#101f3d);color:white;padding:22px 18px;position:relative;border-right:1px solid rgba(255,255,255,.05)
+    }
+    .brand{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+    .brand-badge{
+      width:42px;height:42px;border-radius:14px;display:grid;place-items:center;
+      background:linear-gradient(135deg,#17a2b8,#2bd4c7);font-weight:700;
+    }
+    .brand h2{margin:0;font-size:1.1rem}
+    .brand small{color:rgba(255,255,255,.7)}
+    .nav-title{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);margin:18px 10px 10px}
+    .nav-item{
+      width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;border:none;
+      border-radius:12px;background:transparent;color:rgba(255,255,255,.8);cursor:pointer;text-align:left;transition:.2s ease;margin:6px 0;
+    }
+    .nav-item:hover{background:rgba(255,255,255,.06)}
+    .nav-item.active{
+      background:linear-gradient(90deg,rgba(20,168,188,.28),rgba(255,255,255,.04));
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);color:#fff;
+    }
+    .nav-icon{
+      width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.08);
+      display:grid;place-items:center;
+    }
+    .logout-box{
+      position:absolute;left:18px;right:18px;bottom:18px;
+      background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;
+    }
+    .logout-box .mini{font-size:12px;color:rgba(255,255,255,.7)}
+    .logout-box strong{display:block;margin-top:2px;font-size:14px}
+
+    .main{flex:1;padding:28px 28px 20px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:22px}
+    .title{min-width:0;flex:1}
+    .title h1{margin:0;font-size:clamp(1.35rem,2vw,2.5rem);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .title p{margin:6px 0 0;color:var(--muted)}
+    .top-actions{display:flex;align-items:center;gap:16px}
+    .search{
+      min-width:280px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;
+    }
+    .search input{
+      background:transparent;border:none;outline:none;width:100%;color:var(--text);
+    }
+    .notify{
+      position:relative;width:44px;height:44px;border-radius:14px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;box-shadow:var(--shadow);cursor:pointer;
+    }
+    .notify::after{
+      content:"";position:absolute;right:8px;top:8px;width:8px;height:8px;border-radius:50%;background:var(--danger);border:2px solid #fff;
+    }
+    .notify-badge{position:absolute;right:-2px;top:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ef5a5a;color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;border:2px solid #fff}
+    .notification-drawer{position:fixed;top:24px;right:24px;width:min(360px,calc(100vw - 32px));background:rgba(255,255,255,.97);backdrop-filter:blur(10px);box-shadow:0 18px 42px rgba(15,23,42,.18);border:1px solid rgba(148,163,184,.35);border-radius:18px;padding:0;z-index:50;transform:translateY(-12px);opacity:0;visibility:hidden;transition:all .2s ease}
+    .notification-drawer.open{transform:translateY(0);opacity:1;visibility:visible}
+    .notification-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+    .notification-header h3{margin:0;font-size:1.04rem}
+    .notification-close{border:none;background:transparent;color:var(--muted);font-size:1.2rem;cursor:pointer}
+    .notification-list{padding:10px 12px 12px;display:grid;gap:8px;max-height:440px;overflow:auto}
+    .notification-item{padding:12px 12px;border-radius:12px;background:#f8fafc;border:1px solid transparent;display:grid;gap:5px}
+    .notification-item.info{border-color:#dbeafe;background:#eff6ff}
+    .notification-item.success{border-color:#dcfce7;background:#f0fdf4}
+    .notification-item.warning{border-color:#fef3c7;background:#fffbeb}
+    .notification-item small{color:var(--muted);font-size:11px}
+    .notification-item strong{font-size:.95rem;color:#1f2937}
+    .notification-item p{margin:0;color:#475569;font-size:.83rem;line-height:1.45}
+    .profile{
+      display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:6px 10px 6px 6px;box-shadow:var(--shadow);
+    }
+    .avatar{
+      width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#0093e9,#80d0c7);font-weight:700;
+    }
+    .profile small{color:var(--muted)}
+
+    .stats{display:grid;width:100%;grid-template-columns:repeat(var(--kpi-count, 7),minmax(0,1fr));gap:10px;margin-bottom:20px;align-items:stretch;padding-bottom:2px}
+    .card{
+      background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);
+    }
+    .stat-card{padding:12px 12px 10px;min-width:0;min-height:116px;overflow:hidden;display:flex;flex-direction:column}
+    .stat-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;min-height:36px}
+    .stat-meta{font-size:clamp(8px,.8vw,11px);color:var(--muted);letter-spacing:.04em;text-transform:uppercase;overflow-wrap:anywhere;word-break:normal}
+    .stat-icon{
+      width:34px;height:34px;flex:0 0 34px;border-radius:10px;display:grid;place-items:center;font-size:15px;
+    }
+    .stat-icon.a{background:rgba(27,154,170,.12);color:var(--primary)}
+    .stat-icon.b{background:rgba(14,92,168,.12);color:#0e5ca8}
+    .stat-icon.c{background:rgba(39,174,96,.12);color:var(--success)}
+    .stat-icon.d{background:rgba(246,183,60,.12);color:var(--warning)}
+    .stat-value{margin-top:8px;font-size:clamp(.76rem,1.35vw,1.55rem);font-weight:800;line-height:1.15;white-space:nowrap;overflow:visible;text-overflow:clip;letter-spacing:-.02em}
+    .stat-bottom{margin-top:auto;padding-top:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:5px;font-size:clamp(9px,.75vw,11px);line-height:1.2;color:var(--muted);flex-wrap:wrap}
+    .trend{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:4px 6px;font-weight:600;white-space:nowrap}
+    .trend.up{background:rgba(39,174,96,.12);color:var(--success)}
+    .trend.down{background:rgba(239,90,90,.12);color:var(--danger)}
+
+    .dashboard-grid{display:grid;grid-template-columns:1.7fr 1fr;gap:22px}
+    .panel{padding:20px}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .panel-header h3{margin:0;font-size:1.2rem}
+    .small-link{color:var(--primary);font-weight:600;text-decoration:none;font-size:13px}
+
+    .chart-panel{min-height:330px}
+    .chart-wrap{
+      height:220px;display:flex;align-items:flex-end;gap:14px;padding-top:12px;border-bottom:1px solid var(--line);position:relative;
+    }
+    .chart-grid{
+      position:absolute;inset:0 0 18px 0;pointer-events:none;
+      background:
+        linear-gradient(to top, rgba(17,24,39,.05) 1px, transparent 1px) 0 0 / 100% 25%,
+        linear-gradient(to right, rgba(17,24,39,.04) 1px, transparent 1px) 0 0 / 12.5% 100%;
+    }
+    .bar-group{flex:1;height:100%;display:flex;align-items:flex-end;justify-content:center}
+    .bar{width:46px;border-radius:14px 14px 0 0;background:linear-gradient(180deg,#6dd7f5,#1b9aaa);min-height:30px}
+    .bar.alt{background:linear-gradient(180deg,#b9c7ff,#7a8ef5)}
+    .bar.big{background:linear-gradient(180deg,#82d5a4,#27ae60)}
+    .chart-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:12px}
+    .stats-inline{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:14px;margin-top:18px}
+    .mini-stat{background:var(--panel-alt);border-radius:14px;padding:12px 14px}
+    .mini-stat .label{font-size:12px;color:var(--muted)}
+    .mini-stat .value{margin-top:8px;font-weight:700;font-size:1.2rem}
+
+    .patient-card{min-height:330px}
+    .donut-block{display:flex;align-items:center;justify-content:center;margin:14px 0 18px}
+    .donut{
+      position:relative;width:150px;height:150px;border-radius:50%;
+      background:conic-gradient(var(--primary) 0 42%, var(--success) 42% 68%, var(--warning) 68% 86%, #dfe9ff 86% 100%);
+    }
+    .donut::before{
+      content:"";position:absolute;inset:22px;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px var(--line);
+    }
+    .donut-center{position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:1.55rem;z-index:1}
+    .legend{display:grid;gap:12px}
+    .legend-row{display:flex;align-items:center;justify-content:space-between;font-size:14px;color:var(--muted)}
+    .legend-left{display:flex;align-items:center;gap:10px}
+    .dot{width:11px;height:11px;border-radius:50%}
+    .dot.a{background:var(--primary)}
+    .dot.b{background:var(--success)}
+    .dot.c{background:var(--warning)}
+    .dot.d{background:#dfe9ff}
+
+    .bottom-grid{display:grid;grid-template-columns:1.7fr 1fr;gap:22px;margin-top:22px}
+    table{width:100%;border-collapse:collapse}
+    thead th{text-transform:uppercase;letter-spacing:.08em;font-size:12px;color:var(--muted);padding:14px 16px;text-align:left;border-bottom:1px solid var(--line)}
+    tbody td{padding:15px 16px;border-bottom:1px solid var(--line);font-size:14px}
+    .patient{display:flex;align-items:center;gap:10px}
+    .img{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700}
+    .img.a{background:linear-gradient(135deg,#4e79ff,#2dc7c5)}
+    .img.b{background:linear-gradient(135deg,#ff9b54,#f1686d)}
+    .img.c{background:linear-gradient(135deg,#7d8df2,#5ca7ff)}
+    .img.d{background:linear-gradient(135deg,#3cc39c,#75d39a)}
+    .badge{display:inline-flex;align-items:center;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:600}
+    .badge.green{background:rgba(39,174,96,.12);color:var(--success)}
+    .badge.orange{background:rgba(246,183,60,.15);color:#b56d00}
+    .badge.blue{background:rgba(14,92,168,.12);color:#0e5ca8}
+    .badge.red{background:rgba(239,90,90,.12);color:var(--danger)}
+
+    .schedule{display:grid;gap:12px}
+    .appt{
+      background:var(--panel-alt);border:1px solid rgba(27,154,170,.08);border-radius:14px;padding:12px 14px;
+    }
+    .appt-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .appt h4{margin:0;font-size:14px}
+    .time{font-size:12px;color:var(--muted)}
+    .appt p{margin:0;color:var(--muted);font-size:13px}
+
+    .economic-box{display:grid;gap:14px}
+    .metric-row{
+      display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#f9fbff,#f2f7ff);
+    }
+    .metric-row strong{font-size:1.1rem}
+    .metric-row small{display:block;color:var(--muted)}
+    .money{font-weight:700}
+    .progress{height:10px;width:100%;background:#edf2f7;border-radius:999px;overflow:hidden;margin-top:8px}
+    .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--success));border-radius:inherit}
+
+    .upload-card{padding:18px;margin-bottom:20px}
+    .upload-box{
+      display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;
+    }
+    .upload-box h3{margin:0 0 6px}
+    .upload-box p{margin:0;color:var(--muted)}
+    .file-input-label{
+      display:inline-block;padding:10px 16px;background:var(--primary);color:#fff;border-radius:10px;cursor:pointer;font-weight:600;
+    }
+    #excelUpload{display:none}
+    #fileList{margin-top:16px;display:grid;gap:10px}
+    .storage-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+    .storage-group{background:var(--panel-alt);border:1px solid var(--line);border-radius:14px;padding:14px}
+    .storage-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+    .storage-header h4{margin:0;font-size:14px}
+    .storage-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#eaf1ff;color:var(--secondary);font-size:11px;font-weight:700}
+    .storage-list{display:grid;gap:10px}
+    .file-item{
+      background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    }
+    .storage-group.active .storage-header h4{color:var(--secondary)}
+    .sheet-select{margin-top:10px}
+    .sheet-select label{font-size:13px;color:var(--muted)}
+    .sheet-select select{
+      margin-left:8px;padding:8px;border-radius:8px;border:1px solid #dfe9ff;background:#fff;
+    }
+    .mapping-wrap{
+      margin-top:18px;padding:18px;background:var(--panel-alt);border:1px solid var(--line);border-radius:16px;
+    }
+    .mapping-grid{
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:12px;
+    }
+    .form-group{display:grid;gap:6px}
+    .form-group label{font-size:13px;color:var(--muted)}
+    .form-group select{
+      width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--text);
+    }
+    .button-row{margin-top:14px;display:flex;gap:12px;flex-wrap:wrap}
+    .primary-button,.secondary-button{
+      border:none;border-radius:10px;padding:10px 16px;cursor:pointer;font-weight:600;
+    }
+    .primary-button{background:var(--primary);color:#fff}
+    .secondary-button{background:#eaf1ff;color:var(--secondary)}
+    .section-panel{display:block}
+    .section-panel.hidden{display:none}
+    .auth-overlay{position:fixed;inset:0;background:rgba(15,23,42,.78);display:grid;place-items:center;z-index:20;padding:20px}
+    .auth-overlay.hidden{display:none}
+    .auth-card{width:min(420px,100%);background:#fff;border-radius:20px;padding:28px;box-shadow:0 24px 70px rgba(0,0,0,.25)}
+    .auth-card h2{margin:0 0 8px}.auth-card p{color:var(--muted);margin:0 0 20px}
+    .auth-card form{display:grid;gap:12px}.auth-card label{font-size:13px;color:var(--muted)}
+    .auth-card input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px}
+    .auth-error{color:var(--danger);font-size:13px;min-height:18px}
+    .period-controls{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:4px;box-shadow:var(--shadow)}
+    .period-button{border:0;background:transparent;color:var(--muted);border-radius:9px;padding:8px 11px;cursor:pointer;font-weight:600}
+    .period-button.active,.period-button:hover{background:#eaf1ff;color:var(--secondary)}
+    .daily-only-hidden{display:none !important}
+    .dashboard-compact .graph-card{padding:10px}
+    .dashboard-compact .charts-grid{gap:10px;grid-auto-rows:270px}
+    .dashboard-compact .stat-card{min-height:102px;padding:10px}
+    .dashboard-compact .stat-icon{width:28px;height:28px;flex-basis:28px;font-size:13px}
+    .dashboard-compact .stat-bottom{padding-top:5px}
+    .dashboard-clean .graph-card p{display:none}
+    .settings-note{margin:0;color:var(--muted);font-size:13px}
+    .header-button{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:#fff;color:var(--text);cursor:pointer;font-weight:600;white-space:nowrap}
+    .header-button:hover{background:#eaf1ff;color:var(--secondary)}
+    .notify{position:relative;width:44px;height:44px;border-radius:14px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;box-shadow:var(--shadow);cursor:pointer}
+    .notify-badge{position:absolute;right:-2px;top:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ef5a5a;color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;border:2px solid #fff}
+    .notification-drawer{position:fixed;top:24px;right:24px;width:min(360px,calc(100vw - 32px));background:rgba(255,255,255,.97);backdrop-filter:blur(10px);box-shadow:0 18px 42px rgba(15,23,42,.18);border:1px solid rgba(148,163,184,.35);border-radius:18px;padding:0;z-index:50;transform:translateY(-12px);opacity:0;visibility:hidden;transition:all .2s ease}
+    .notification-drawer.open{transform:translateY(0);opacity:1;visibility:visible}
+    .notification-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+    .notification-header h3{margin:0;font-size:1.04rem}
+    .notification-close{border:none;background:transparent;color:var(--muted);font-size:1.2rem;cursor:pointer}
+    .notification-list{padding:10px 12px 12px;display:grid;gap:8px;max-height:440px;overflow:auto}
+    .notification-item{padding:12px 12px;border-radius:12px;background:#f8fafc;border:1px solid transparent;display:grid;gap:5px}
+    .notification-item.info{border-color:#dbeafe;background:#eff6ff}
+    .notification-item.success{border-color:#dcfce7;background:#f0fdf4}
+    .notification-item.warning{border-color:#fef3c7;background:#fffbeb}
+    .notification-item small{color:var(--muted);font-size:11px}
+    .notification-item strong{font-size:.95rem;color:#1f2937}
+    .notification-item p{margin:0;color:#475569;font-size:.83rem;line-height:1.45}
+    .dashboard-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .data-source{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+    .data-source strong{color:var(--text)}
+    .period-month-control{display:inline-flex;align-items:center;gap:5px;margin-left:12px;color:var(--text);font-weight:600}
+    .period-month-control.hidden{display:none}
+    .period-month-control select{border:1px solid var(--line);border-radius:7px;padding:4px 7px;background:#fff;color:var(--text)}
+    .charts-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:300px;gap:14px;margin-bottom:12px;min-width:0;align-items:stretch}
+    .graph-card{padding:14px;min-height:0;min-width:0;overflow:hidden;display:flex;flex-direction:column}.graph-card h3{margin:0 0 4px;font-size:.92rem;overflow-wrap:anywhere;line-height:1.25}
+    .graph-card.wide{grid-column:span 3;min-height:330px;max-height:330px;grid-row:span 1}
+    .graph-card p{margin:0 0 9px;color:var(--muted);font-size:10px}
+    .graph-list{display:grid;gap:6px;min-height:0;flex:1;overflow:hidden;padding-right:2px}
+    .graph-card.wide .graph-list{overflow:hidden}
+    .graph-row{display:grid;grid-template-columns:minmax(70px,1.1fr) minmax(0,2fr) minmax(78px,auto);gap:9px;align-items:center;font-size:12px}
+    .graph-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.graph-track{height:17px;background:#edf2f7;border-radius:5px;overflow:hidden}
+    .graph-bar{height:100%;background:linear-gradient(90deg,var(--primary),#58c6d0);border-radius:5px;min-width:2px}
+    .graph-bar.empty{display:none}
+    .graph-bar.red{background:linear-gradient(90deg,#ef5a5a,#ff9b85)}.graph-bar.purple{background:linear-gradient(90deg,#7a8ef5,#b9c7ff)}
+    .graph-bar.gold{background:linear-gradient(90deg,#f6b73c,#f9d787)}.graph-value{text-align:right;font-weight:700;white-space:nowrap}
+    .graph-total{margin-top:14px;padding-top:10px;border-top:1px solid var(--line);text-align:right;font-size:13px}
+    .period-comparison{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .period-comparison .graph-card{min-width:0}
+    .period-comparison .graph-card{padding:0;border:0;box-shadow:none}
+    .panel-chart-legend{display:flex;gap:12px;font-size:10px;color:var(--muted);margin-bottom:6px}
+    .revenue-key::before,.credit-key::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+    .revenue-key::before{background:#ef5a5a}.credit-key::before{background:#7a8ef5}
+    .panel-bars-list{display:grid;gap:6px}
+    .panel-bar-row{display:grid;grid-template-columns:minmax(90px,1.1fr) 1.5fr minmax(100px,auto);gap:7px;align-items:center;font-size:10px}
+    .panel-bars{display:flex;align-items:flex-end;gap:3px;height:18px;background:#edf2f7;border-radius:4px;padding:2px}
+    .panel-bars span{display:block;height:12px;border-radius:3px;min-width:2px}
+    .panel-revenue{background:#ef5a5a}.panel-credit{background:#7a8ef5}
+    .panel-values{text-align:right;font-weight:700;white-space:nowrap}
+    .panel-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:12px;align-items:end;min-height:180px;padding:12px 10px 0;border-bottom:1px solid var(--line);width:100%}
+    .panel-column-group{display:grid;gap:6px;align-items:end;text-align:center;min-width:0}
+    .panel-column-values{display:flex;justify-content:center;align-items:center;gap:5px;min-height:26px;flex-wrap:wrap}
+    .panel-value-tag{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:2px 6px;font-size:8px;font-weight:700;line-height:1.3;white-space:nowrap;max-width:100%;box-shadow:inset 0 0 0 1px rgba(15,23,42,.04)}
+    .panel-revenue-tag{background:rgba(239,90,90,.12);color:#d94a4a}
+    .panel-credit-tag{background:rgba(122,142,245,.12);color:#4d63d6}
+    .panel-column-bars{height:135px;display:flex;align-items:end;justify-content:center;gap:5px}
+    .panel-column-bars span{width:22px;min-height:2px;border-radius:5px 5px 0 0;position:relative}
+    .panel-column-label{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .line-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--muted)}
+    .period-line-chart{height:175px;display:flex;flex-direction:column;gap:5px}
+    .period-line-chart svg{width:100%;height:135px;overflow:visible}
+    .period-line-chart .line-legend{display:flex;justify-content:center;gap:14px;font-size:10px;color:var(--muted)}
+    .line-values{display:grid;grid-template-columns:repeat(auto-fit,minmax(58px,1fr));gap:4px;font-size:9px;color:var(--muted);text-align:center}
+    .line-values strong{display:block;color:var(--text);font-size:10px}
+    .line-legend span::before{content:"";display:inline-block;width:16px;border-top:3px solid currentColor;vertical-align:middle;margin-right:4px}
+    .line-legend .actual{color:#4285e8}.line-legend .target{color:#ef5a5a}
+
+    @media (max-width:1100px){
+      .dashboard-grid,.bottom-grid{grid-template-columns:1fr}
+      .charts-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:300px}
+      .graph-card.wide{grid-column:span 2}
+    }
+    @media (max-width:860px){
+      .app{flex-direction:column}
+      .sidebar{width:100%}
+      .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+      .topbar{flex-direction:column;align-items:flex-start}
+      .top-actions{width:100%;justify-content:space-between}
+      .search{min-width:0;flex:1}
+      .stat-card{min-height:112px}
+    }
+    @media (max-width:520px){
+      .main{padding:18px 14px 20px}
+      .stats{grid-template-columns:1fr}
+      .top-actions{flex-wrap:wrap}
+      .upload-box{align-items:flex-start}
+      .charts-grid,.period-comparison{grid-template-columns:1fr}
+      .graph-card.wide{grid-column:span 1}
+    }
+  
+</style>
+</head>
+<body>
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-card">
+      <h2>SURYA Hospital Admin</h2>
+      <p>Sign in to access hospital data and reports.</p>
+      <form id="loginForm">
+        <label for="loginUsername">Username</label>
+        <input id="loginUsername" name="username" autocomplete="username" value="admin" required>
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+        <div class="auth-error" id="loginError" role="alert"></div>
+        <button class="primary-button" type="submit">Sign in</button>
+      </form>
+    </div>
+  </div>
+
+  <aside class="notification-drawer" id="notificationDrawer" aria-hidden="true">
+    <div class="notification-header">
+     <h3>Notifications</h3>
+     <button type="button" class="notification-close" id="notificationClose" aria-label="Close notifications">✕</button>
+    </div>
+    <div class="notification-list" id="notificationList"></div>
+  </aside>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-badge">H</div>
+        <div>
+          <h2>SURYA Hospital</h2>
+          <small>A unit of Vedansh Medicare Pvt Ltd</small>
+        </div>
+      </div>
+
+      <div class="nav-title">Overview</div>
+
+      <button class="nav-item active" data-target="dashboard">
+        <div class="nav-icon">⌂</div>
+        <div>Dashboard</div>
+      </button>
+
+      <button class="nav-item" data-target="dashboard" data-period="daily">
+        <div class="nav-icon">▣</div>
+        <div>Daily Dashboard</div>
+      </button>
+
+      <button class="nav-item" data-target="dashboard" data-period="multi-day">
+        <div class="nav-icon">▥</div>
+        <div>Multi-Day Analysis</div>
+      </button>
+
+      <button class="nav-item" data-target="upload">
+        <div class="nav-icon">📁</div>
+        <div>Upload Data</div>
+      </button>
+
+      <div class="nav-title">Management</div>
+
+      <button class="nav-item" data-target="settings">
+        <div class="nav-icon">⚙</div>
+        <div>Settings</div>
+      </button>
+
+      <div class="logout-box">
+        <div>
+          <div class="mini">Admin</div>
+          <strong>Dr. Surya</strong>
+        </div>
+        <button id="logoutBtn" class="secondary-button" type="button">Logout</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="title">
+          <h1 id="dashboardTitle">SURYA Hospital Multi Super Speciality</h1>
+          <p id="dashboardSubtitle">A unit of Vedansh Medicare Pvt Ltd</p>
+        </div>
+
+        <div class="top-actions">
+          <div class="period-controls" aria-label="Dashboard period">
+            <button class="period-button active" data-period="daily" type="button">Daily</button>
+            <button class="period-button" data-period="multi-day" type="button">Multi-Day</button>
+          </div>
+          <button class="header-button" id="downloadDashboardBtn" type="button">Download Dashboard</button>
+          <button class="notify" id="notificationBtn" type="button" aria-label="Notifications">
+            <span class="notify-badge" id="notificationBadge">2</span>
+            🔔
+          </button>
+        </div>
+      </header>
+
+      <div class="section-panel" data-section="dashboard">
+        <div class="dashboard-toolbar">
+          <div class="data-source">Showing <strong id="periodLabel">Daily</strong> data from Admission, Discharge, Bill, Service and IPD sheets <label id="weeklyMonthControl" class="period-month-control hidden">Month <select id="weeklyMonthSelect"></select></label></div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="primary-button" id="periodUploadBtn" type="button">Upload Daily Files</button>
+        </div>
+        </div>
+        <section class="stats" id="statsSection"></section>
+        <section class="charts-grid" id="chartsSection" aria-label="Dashboard charts"></section>
+
+      </div>
+
+      <div class="section-panel hidden" data-section="upload">
+        <div class="card upload-card">
+          <div class="upload-box">
+            <div>
+              <h3>Upload <span id="uploadPeriodLabel">Daily</span> hospital data</h3>
+              <p>Upload files for the selected period: Admission, Discharge, Bill, Service, IPD List, Helper Sheet and Final Master.</p>
+            </div>
+            <label for="excelUpload" class="file-input-label">Select Period Files</label>
+            <input id="excelUpload" type="file" multiple accept=".xlsx,.xls,.csv" />
+          </div>
+
+          <div class="storage-grid">
+            <div class="storage-group active" id="dailyStorageGroup"></div>
+            <div class="storage-group" id="multiDayStorageGroup"></div>
+          </div>
+
+          <div class="mapping-wrap">
+            <h3 style="margin:0 0 8px">Optional column mapping</h3>
+            <p style="margin:0;color:var(--muted)">Choose columns only when your uploaded file uses different headings. Apply Mapping refreshes the selected period dashboard.</p>
+            <div class="mapping-grid">
+              <div class="form-group">
+                <label for="revenueColumn">Revenue Column</label>
+                <select id="revenueColumn">
+                  <option value="">Choose column</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="expenseColumn">Expense Column</label>
+                <select id="expenseColumn">
+                  <option value="">Choose column</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="patientColumn">Patient Name Column</label>
+                <select id="patientColumn">
+                  <option value="">Choose column</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="departmentColumn">Department Column</label>
+                <select id="departmentColumn">
+                  <option value="">Choose column</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="doctorColumn">Doctor Column</label>
+                <select id="doctorColumn">
+                  <option value="">Choose column</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="statusColumn">Status Column</label>
+                <select id="statusColumn">
+                  <option value="">Choose column</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="billColumn">Bill Amount Column</label>
+                <select id="billColumn">
+                  <option value="">Choose column</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="appointmentColumn">Appointment Time Column</label>
+                <select id="appointmentColumn">
+                  <option value="">Choose column</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="button-row">
+              <button class="primary-button" id="applyMappingBtn" type="button">Apply Mapping</button>
+              <button class="secondary-button" id="loadDefaultBtn" type="button">Load Default Data</button>
+            </div>
+            <div id="uploadActionStatus" role="status" style="margin-top:12px;color:var(--muted);font-size:13px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-panel hidden" data-section="settings">
+        <div class="card panel">
+          <div class="panel-header">
+            <h3>Settings Panel</h3>
+            <span class="small-link">Saved on this device</span>
+          </div>
+          <p class="settings-note">Tune the Daily dashboard for faster review, cleaner reports, and practical day-to-day monitoring.</p>
+          <div class="mapping-grid">
+            <div class="form-group">
+              <label for="dashboardDensitySetting">Dashboard density</label>
+              <select id="dashboardDensitySetting">
+                <option value="comfortable">Comfortable</option>
+                <option value="compact">Compact</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="notificationSetting">Dashboard notifications</label>
+              <select id="notificationSetting">
+                <option value="on">On</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="chartDetailSetting">Chart detail</label>
+              <select id="chartDetailSetting">
+                <option value="full">Show chart descriptions</option>
+                <option value="clean">Hide descriptions</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="refreshSetting">Auto-refresh data</label>
+              <select id="refreshSetting">
+                <option value="off">Off</option>
+                <option value="5">Every 5 minutes</option>
+                <option value="15">Every 15 minutes</option>
+              </select>
+            </div>
+          </div>
+          <div class="button-row">
+            <button class="primary-button" id="saveSettingsBtn" type="button">Save Settings</button>
+            <button class="secondary-button" id="resetSettingsBtn" type="button">Reset Settings</button>
+          </div>
+          <div id="settingsStatus" role="status" style="margin-top:12px;color:var(--muted);font-size:13px"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+
+    const periodFiles = { daily: [], weekly: [], monthly: [] };
+    let uploadedFiles = periodFiles.daily;
+    let masterRows = [];
+    let dashboardWorkbook = null;
+    let currentPeriod = "daily";
+    let dashboardMode = "daily";
+    let selectedWeeklyMonth = "";
+    let currentPatientRows = [];
+    let allPatientRows = [];
+    let currentSearchTerm = "";
+    let dashboardSettings = {density: "comfortable", notifications: "on", chartDetail: "full", refresh: "off"};
+    let refreshTimer = null;
+    const defaultData = {
+      revenue: 692114.52,
+      expenses: 39200,
+      claims: 26400,
+      admissions: 14,
+      discharges: 9,
+      opdCount: 64,
+      activePatients: 62,
+      averageRevenue: 76901.61,
+      bedOccupancy: 40,
+      patients: [
+        { name: "Alina Brown", dept: "Cardiology", doctor: "Dr. R. Shah", status: "Recovered", bill: 1240, initials: "AB", color: "a" },
+        { name: "John Parker", dept: "Orthopedic", doctor: "Dr. I. Roy", status: "Monitoring", bill: 2180, initials: "JP", color: "b" },
+        { name: "Sonia Moore", dept: "Neurology", doctor: "Dr. A. Nair", status: "Consult", bill: 980, initials: "SM", color: "c" },
+        { name: "Daniel Malik", dept: "Emergency", doctor: "Dr. T. Lee", status: "Critical", bill: 3520, initials: "DM", color: "d" }
+      ],
+      appointments: [
+        { title: "Cardiology Review", time: "09:00 AM - 09:45 AM", doctor: "Dr. R. Shah", status: "Active" },
+        { title: "Orthopedic Checkup", time: "11:15 AM - 11:50 AM", doctor: "Dr. I. Roy", status: "Confirmed" },
+        { title: "Lab Diagnostics", time: "01:30 PM - 02:20 PM", doctor: "Radiology Team", status: "Pending" }
+      ]
+    };
+
+    function currencyFormat(value, decimals = 0) {
+      const amount = Number(value);
+      return "₹" + amount.toLocaleString("en-IN", {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function renderStats(data) {
+      const totalPatients = data.patients.length || 1284;
+      const revenue = data.revenue ?? 0;
+      const expenses = data.expenses ?? 0;
+      const admissions = data.admissions ?? 0;
+      const discharges = data.discharges ?? 0;
+      const opdCount = data.opdCount ?? 0;
+      const activePatients = data.activePatients ?? 0;
+      const averageRevenue = data.averageRevenue ?? 0;
+      const bedOccupancy = data.bedOccupancy ?? 0;
+
+      const statsSection = document.getElementById("statsSection");
+      statsSection.style.setProperty("--kpi-count", "7");
+      statsSection.innerHTML = `
+        <div class="card stat-card">
+          <div class="stat-top">
+            <div class="stat-meta">IPD Admissions</div>
+            <div class="stat-icon a">💰</div>
+          </div>
+          <div class="stat-value">${admissions}</div>
+          <div class="stat-bottom">
+            <span>Admission Report</span>
+            <span class="trend up">▲ 12.4%</span>
+          </div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="stat-top">
+            <div class="stat-meta">Today's Discharge</div>
+            <div class="stat-icon b">🧑‍⚕️</div>
+          </div>
+          <div class="stat-value">${discharges}</div>
+          <div class="stat-bottom">
+            <span>Discharge Report</span>
+            <span class="trend up">▲ 8.2%</span>
+          </div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="stat-top">
+            <div class="stat-meta">Total Revenue</div>
+            <div class="stat-icon c">🏥</div>
+          </div>
+          <div class="stat-value">${currencyFormat(revenue)}</div>
+          <div class="stat-bottom">
+            <span>Discharge Report</span>
+            <span class="trend up">▲ 5.3%</span>
+          </div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="stat-top">
+            <div class="stat-meta">Avg Revenue</div>
+            <div class="stat-icon d">💸</div>
+          </div>
+          <div class="stat-value">${currencyFormat(averageRevenue, 2)}</div>
+          <div class="stat-bottom">
+            <span>per discharge</span>
+            <span class="trend down">▼ 2.1%</span>
+          </div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="stat-top"><div class="stat-meta">Bed Occupancy</div><div class="stat-icon a">🛏️</div></div>
+          <div class="stat-value">${Number(bedOccupancy).toFixed(2)}%</div>
+          <div class="stat-bottom"><span>IPD List</span><span class="trend up">Live</span></div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="stat-top"><div class="stat-meta">Total Service Rows</div><div class="stat-icon b">👥</div></div>
+          <div class="stat-value">${opdCount}</div>
+          <div class="stat-bottom"><span>Service Report • all rows</span><span class="trend up">Live</span></div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="stat-top"><div class="stat-meta">Active Patients</div><div class="stat-icon c">🏥</div></div>
+          <div class="stat-value">${activePatients}</div>
+          <div class="stat-bottom"><span>IPD List only</span><span class="trend up">Live</span></div>
+        </div>
+      `;
+    }
+
+    function renderPeriodKpis(kpis) {
+      const cards = [
+        ["IPD Admissions", kpis.admissions, "Admission Report • UHID count"],
+        ["IPD Discharge", kpis.discharges, "Discharge Report • UHID count"],
+        ["Total Revenue", currencyFormat(kpis.revenue, 2), "Discharge + Service • Final Service Amt"],
+        ["Cash Due", currencyFormat(kpis.cashDue, 2), "Discharge Report • Cash Due"],
+        ["Credit Due", currencyFormat(kpis.creditDue, 2), "Discharge Report • Credit Due"],
+        ["Total Service Rows", kpis.serviceRows, "Service Report • all uploaded rows"],
+        ["IPD Avg Revenue / Patient", currencyFormat(kpis.averageRevenue, 2), "Discharge Report • average Final Service Amt"],
+        ["ALOS", `${kpis.alos.toFixed(2)} days`, "Discharge Report • average (DOD - Doa)"]
+      ];
+      const statsSection = document.getElementById("statsSection");
+      statsSection.style.setProperty("--kpi-count", String(cards.length));
+      statsSection.innerHTML = cards.map(([label, value, source], index) => `
+        <div class="card stat-card">
+          <div class="stat-top"><div class="stat-meta">${label}</div><div class="stat-icon ${["a","b","c","d"][index % 4]}">📊</div></div>
+          <div class="stat-value">${value}</div>
+          <div class="stat-bottom"><span>${source}</span></div>
+        </div>
+      `).join("");
+    }
+
+    function rowsForPeriod(rows, dateColumnNames) {
+      if (currentPeriod === "monthly" || !rows.length) return rows;
+      const dateColumn = findColumn(rows[0], dateColumnNames);
+      if (!dateColumn) return rows;
+      if (currentPeriod !== "weekly") return rows;
+      const dates = rows.map(row => excelDate(row[dateColumn])).filter(Boolean);
+      if (!dates.length) return rows;
+      const latestDate = new Date(Math.max(...dates.map(date => date.getTime())));
+      const start = new Date(latestDate.getFullYear(), latestDate.getMonth(), latestDate.getDate() <= 10 ? 1 : latestDate.getDate() <= 20 ? 11 : 21);
+      start.setHours(0, 0, 0, 0);
+      const end = latestDate.getDate() <= 10
+        ? new Date(latestDate.getFullYear(), latestDate.getMonth(), 10)
+        : latestDate.getDate() <= 20
+          ? new Date(latestDate.getFullYear(), latestDate.getMonth(), 20)
+          : new Date(latestDate.getFullYear(), latestDate.getMonth() + 1, 0);
+      end.setHours(23, 59, 59, 999);
+      return rows.filter(row => {
+        const date = excelDate(row[dateColumn]);
+        return date && date >= start && date <= end;
+      });
+    }
+
+    function calculatePeriodKpis(admission, discharge, service, includeServiceRevenue = true) {
+      const dischargeAmount = findColumn(discharge[0] || {}, ["Service Final Amt"]);
+      const serviceAmount = findColumn(service[0] || {}, ["Service Final Amt"]);
+      const cashDue = findColumn(discharge[0] || {}, ["Cash Due"]);
+      const creditDue = findColumn(discharge[0] || {}, ["Credit Due"]);
+      const dod = findColumn(discharge[0] || {}, ["DOD"]);
+      const serviceName = findColumn(service[0] || {}, ["Service Name"]);
+      const uhid = findColumn(service[0] || {}, ["UHID"]);
+      const dischargeUhid = findColumn(discharge[0] || {}, ["UHID"]);
+      const dischargeDod = findColumn(discharge[0] || {}, ["DOD"]);
+      const bedDays = findColumn(discharge[0] || {}, ["BED-DAYS", "BED DAYS"]);
+      const admissionDate = findColumn(discharge[0] || {}, ["Doa", "DOA", "Admission Date"]);
+      const uniqueDischargeIds = new Set(discharge.map(row => String(row[dischargeUhid] || "").trim()).filter(Boolean));
+      const dischargeAmounts = discharge.map(row => numericAmount(row[dischargeAmount])).filter(value => value !== null);
+      const serviceAmounts = service.map(row => numericAmount(row[serviceAmount])).filter(value => value !== null);
+      const dischargeRowsWithDod = discharge.filter(row => String(row[dischargeDod] || "").trim());
+      const totalBedDays = dischargeRowsWithDod.reduce((sum, row) => {
+        const bedDayValue = numericAmount(row[bedDays]);
+        if (bedDayValue !== null) return sum + bedDayValue;
+        const doa = excelDate(row[admissionDate]);
+        const dod = excelDate(row[dischargeDod]);
+        if (!doa || !dod) return sum;
+        return sum + Math.max((dod - doa) / (1000 * 60 * 60 * 24), 0);
+      }, 0);
+      const dischargeDateCount = dischargeRowsWithDod.length;
+      return {
+        admissions: uniqueCount(admission, findColumn(admission[0] || {}, ["UHID"])),
+        discharges: uniqueDischargeIds.size,
+        revenue: [
+          ...dischargeAmounts,
+          ...(includeServiceRevenue ? serviceAmounts : [])
+        ].reduce((sum, value) => sum + value, 0),
+        cashDue: discharge.reduce((sum, row) => sum + (numericAmount(row[cashDue]) || 0), 0),
+        creditDue: discharge.reduce((sum, row) => sum + (numericAmount(row[creditDue]) || 0), 0),
+        serviceRows: service.length,
+        averageRevenue: uniqueDischargeIds.size ? dischargeAmounts.reduce((sum, value) => sum + value, 0) / uniqueDischargeIds.size : 0,
+        alos: dischargeDateCount ? totalBedDays / dischargeDateCount : 0
+      };
+    }
+
+    function renderPatientRows(rows) {
+      const body = document.getElementById("patientTableBody");
+      const panelBody = document.getElementById("patientsPanelTable");
+      if (!body || !panelBody) return;
+      currentPatientRows = rows;
+      const html = rows.map((p) => {
+        const badgeClass = p.status === "Recovered" ? "green" : p.status === "Monitoring" ? "orange" : p.status === "Consult" ? "blue" : "red";
+        return `
+          <tr>
+            <td>
+              <div class="patient">
+                <div class="img ${p.color || 'a'}">${p.initials || p.name.slice(0,2).toUpperCase()}</div>
+                <div>
+                  <strong>${p.name}</strong><br>
+                  <small>ID: #${Math.floor(Math.random()*100000)}</small>
+                </div>
+              </div>
+            </td>
+            <td>${p.dept}</td>
+            <td>${p.doctor}</td>
+            <td><span class="badge ${badgeClass}">${p.status}</span></td>
+            <td>${currencyFormat(p.bill || 0)}</td>
+          </tr>
+        `;
+      }).join("");
+
+      body.innerHTML = html;
+      panelBody.innerHTML = html;
+    }
+
+    function filterPatients() {
+      const term = currentSearchTerm.trim().toLowerCase();
+      if (!term) {
+        renderPatientRows(allPatientRows);
+        return;
+      }
+      const filtered = allPatientRows.filter(patient =>
+        [patient.name, patient.uhid, patient.dept, patient.doctor, patient.status, patient.panel]
+          .some(value => String(value || "").toLowerCase().includes(term))
+      );
+      renderPatientRows(filtered);
+    }
+
+    function renderAppointments(rows) {
+      const list = document.getElementById("appointmentList");
+      const panel = document.getElementById("appointmentsPanel");
+      if (!list || !panel) return;
+
+      const html = rows.map(item => {
+        const badgeClass = item.status === "Active" ? "blue" : item.status === "Confirmed" ? "green" : "orange";
+        return `
+          <div class="appt">
+            <div class="appt-top">
+              <h4>${item.title}</h4>
+              <span class="badge ${badgeClass}">${item.status}</span>
+            </div>
+            <div class="time">${item.time}</div>
+            <p>${item.doctor} with scheduled patient workflow</p>
+          </div>
+        `;
+      }).join("");
+
+      list.innerHTML = html;
+      panel.innerHTML = html;
+    }
+
+    function renderEconomics(data) {
+      if (!document.getElementById("netRevenueValue")) return;
+      const revenue = data.revenue ?? 0;
+      const expenses = data.expenses ?? 0;
+      const claims = data.claims ?? 0;
+      const profit = revenue - expenses;
+
+      document.getElementById("netRevenueValue").textContent = currencyFormat(revenue);
+      document.getElementById("opCostValue").textContent = currencyFormat(expenses);
+      document.getElementById("claimValue").textContent = currencyFormat(claims);
+      document.getElementById("ecoRevenue").textContent = currencyFormat(revenue);
+      document.getElementById("ecoExpense").textContent = currencyFormat(expenses);
+      document.getElementById("ecoProfit").textContent = currencyFormat(profit);
+
+      document.getElementById("budgetBar").style.width = "68%";
+    }
+
+    function renderDefaultData() {
+      renderStats(defaultData);
+      allPatientRows = defaultData.patients;
+      renderPatientRows(defaultData.patients);
+      renderAppointments(defaultData.appointments);
+      renderEconomics(defaultData);
+    }
+
+    function showSection(target) {
+      document.querySelectorAll(".section-panel").forEach(panel => {
+        panel.classList.toggle("hidden", panel.dataset.section !== target);
+      });
+    }
+
+    function loadSettings() {
+      try {
+        dashboardSettings = {...dashboardSettings, ...JSON.parse(localStorage.getItem("horizonCareSettings") || "{}")};
+      } catch (error) {
+        console.error("Dashboard settings could not be restored:", error);
+      }
+      document.body.classList.toggle("dashboard-compact", dashboardSettings.density === "compact");
+      document.body.classList.toggle("dashboard-clean", dashboardSettings.chartDetail === "clean");
+      document.getElementById("notificationSetting").value = dashboardSettings.notifications;
+      document.getElementById("dashboardDensitySetting").value = dashboardSettings.density;
+      document.getElementById("chartDetailSetting").value = dashboardSettings.chartDetail;
+      document.getElementById("refreshSetting").value = dashboardSettings.refresh;
+      document.getElementById("notificationBtn").style.display = dashboardSettings.notifications === "off" ? "none" : "grid";
+      scheduleRefresh();
+    }
+
+    function saveSettings() {
+      dashboardSettings = {
+        density: document.getElementById("dashboardDensitySetting").value,
+        notifications: document.getElementById("notificationSetting").value,
+        chartDetail: document.getElementById("chartDetailSetting").value,
+        refresh: document.getElementById("refreshSetting").value
+      };
+      localStorage.setItem("horizonCareSettings", JSON.stringify(dashboardSettings));
+      document.body.classList.toggle("dashboard-compact", dashboardSettings.density === "compact");
+      document.body.classList.toggle("dashboard-clean", dashboardSettings.chartDetail === "clean");
+      document.getElementById("notificationBtn").style.display = dashboardSettings.notifications === "off" ? "none" : "grid";
+      scheduleRefresh();
+      document.getElementById("settingsStatus").textContent = "Settings saved successfully.";
+    }
+
+    function scheduleRefresh() {
+      if (refreshTimer) clearInterval(refreshTimer);
+      refreshTimer = null;
+      const minutes = Number(dashboardSettings.refresh);
+      if (minutes > 0) {
+        refreshTimer = setInterval(() => {
+          if (dashboardMode === "daily" && !document.querySelector('[data-section="dashboard"].hidden')) loadDashboard();
+        }, minutes * 60 * 1000);
+      }
+    }
+
+    function selectPeriod(period) {
+      const requestedPeriod = period;
+      if (period === "multi-day") {
+        dashboardMode = "multi-day";
+        const availableFiles = [...new Map(Object.values(periodFiles).flat().map(file => [file.name, file])).values()];
+        period = availableFiles.length ? detectUploadedPeriod(availableFiles) : "weekly";
+        periodFiles[period] = availableFiles;
+        uploadedFiles = availableFiles;
+      } else {
+        dashboardMode = "daily";
+      }
+      const button = document.querySelector(`.period-button[data-period="${requestedPeriod === "multi-day" ? "multi-day" : period}"]`);
+      if (!["daily", "weekly", "monthly"].includes(period)) return;
+      document.querySelectorAll(".period-button").forEach(item => {
+        const isMultiDay = item.dataset.period === "multi-day";
+        const shouldBeActive = requestedPeriod === "multi-day"
+          ? isMultiDay
+          : item.dataset.period === "daily" && dashboardMode === "daily";
+        item.classList.toggle("active", shouldBeActive);
+      });
+      if (button) button.classList.add("active");
+      currentPeriod = period;
+      document.getElementById("weeklyMonthControl").classList.toggle("hidden", period !== "weekly");
+      uploadedFiles = periodFiles[currentPeriod];
+      const label = dashboardMode === "daily"
+        ? "Single-Day Dashboard"
+        : period === "weekly"
+          ? "Multi-Day Weekly Dashboard"
+          : "Multi-Day Monthly Dashboard";
+      document.getElementById("periodLabel").textContent = label;
+      document.getElementById("uploadPeriodLabel").textContent = label;
+      document.getElementById("periodUploadBtn").textContent = `Upload ${label} Files`;
+      document.getElementById("dashboardTitle").textContent = `${label} | SURYA Hospital Multi Super Speciality`;
+      document.getElementById("dashboardSubtitle").textContent = "A unit of Vedansh Medicare Pvt Ltd";
+      document.querySelectorAll(".nav-item").forEach(item => {
+        const isMultiDay = item.dataset.period === "multi-day" && (period === "weekly" || period === "monthly");
+        item.classList.toggle("active", item.dataset.target === "dashboard" && (!item.dataset.period || item.dataset.period === period || (requestedPeriod === "multi-day" && isMultiDay)));
+      });
+      renderFileList();
+      showSection("dashboard");
+      if (uploadedFiles.length) generateMappedDashboardFromExcel();
+      else loadDashboard(period);
+    }
+
+    async function loadDashboard() {
+      try {
+        const response = await fetch("/api/dashboard");
+        if (response.status === 401) {
+          showLogin();
+          return;
+        }
+        if (!response.ok) throw new Error("Dashboard API failed");
+
+        const data = await response.json();
+        if (dashboardMode === "multi-day") {
+          renderPeriodKpis({
+            admissions: 0, discharges: 0, revenue: 0, cashDue: 0, creditDue: 0,
+            consultations: 0, averageRevenue: 0, alos: 0
+          });
+        } else {
+          renderStats(data);
+        }
+        allPatientRows = data.patients || defaultData.patients;
+        renderPatientRows(allPatientRows);
+        renderAppointments(data.appointments || defaultData.appointments);
+        renderEconomics(data);
+      } catch (error) {
+        console.error("Failed to load dashboard from backend:", error);
+        renderDefaultData();
+      }
+    }
+
+    async function uploadFileToBackend(file) {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          headers: {"X-Dashboard-Period": currentPeriod},
+          body: formData
+        });
+
+        if (response.status === 401) {
+          showLogin();
+          return null;
+        }
+        if (!response.ok) {
+          throw new Error("Upload request failed");
+        }
+
+        const result = await response.json();
+        console.log("Upload result:", result);
+        return result;
+      } catch (error) {
+        console.error("Backend upload failed:", error);
+        return null;
+      }
+    }
+
+    document.querySelectorAll(".nav-item").forEach(item => {
+      item.addEventListener("click", () => {
+        document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
+        item.classList.add("active");
+
+        const target = item.dataset.target;
+        if (item.dataset.period) {
+          selectPeriod(item.dataset.period);
+        }
+        showSection(target);
+      });
+
+      document.querySelectorAll(".period-button").forEach(button => {
+        button.addEventListener("click", () => {
+          selectPeriod(button.dataset.period);
+        });
+      });
+    });
+    document.getElementById("weeklyMonthSelect").addEventListener("change", event => {
+      selectedWeeklyMonth = event.target.value;
+      if (currentPeriod === "weekly") renderMultiDayCharts();
+    });
+
+    document.getElementById("periodUploadBtn").addEventListener("click", () => {
+      showSection("upload");
+      document.querySelectorAll(".nav-item").forEach(item => {
+        item.classList.toggle("active", item.dataset.target === "upload");
+      });
+    });
+
+    function loadDataFromSelectedFile() {
+      const fileData = uploadedFiles.map(file => {
+        const sheetName = file.activeSheet;
+        const sheet = file.workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        return { fileName: file.name, sheetName, rows };
+      });
+
+      if (!fileData.length) return null;
+      return fileData;
+    }
+
+    function classifyFile(name) {
+      const value = normalizeHeader(name);
+      if (value.includes("admission")) return "admission";
+      if (value.includes("discharge")) return "discharge";
+      if (value.includes("bill")) return "bill";
+      if (value.includes("service")) return "service";
+      if (value.includes("ipd")) return "ipd";
+      if (value.includes("helper")) return "helper";
+      if (value.includes("finalmaster") || value.includes("master")) return "master";
+      return "other";
+    }
+
+    function detectUploadedPeriod(files) {
+      const dates = new Set();
+      files.forEach(file => {
+        const sheet = file.workbook.Sheets[file.activeSheet || file.workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, {defval: ""});
+        if (!rows.length) return;
+        const dateColumn = findColumn(rows[0], ["DATE", "Doa", "DOA", "DOD", "Bill Date", "Service Date"]);
+        if (!dateColumn) return;
+        rows.forEach(row => {
+          const date = excelDate(row[dateColumn]);
+          if (date) dates.add(`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`);
+        });
+      });
+      if (dates.size <= 1) return "daily";
+      return dates.size <= 7 ? "weekly" : "monthly";
+    }
+
+    function encodeFile(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let index = 0; index < bytes.length; index += 8192) {
+        binary += String.fromCharCode(...bytes.subarray(index, index + 8192));
+      }
+      return btoa(binary);
+    }
+
+    function savePeriodFiles() {
+      const dailySaved = {daily: periodFiles.daily.map(file => ({name: file.name, data: file.data}))};
+      const multiDaySaved = {weekly: periodFiles.weekly.map(file => ({name: file.name, data: file.data})), monthly: periodFiles.monthly.map(file => ({name: file.name, data: file.data}))};
+      localStorage.setItem("horizonCareDailyDashboardFiles", JSON.stringify(dailySaved));
+      localStorage.setItem("horizonCareMultiDayDashboardFiles", JSON.stringify(multiDaySaved));
+      localStorage.setItem("horizonCarePeriodFiles", JSON.stringify({
+        ...dailySaved,
+        ...multiDaySaved
+      }));
+    }
+
+    async function restorePeriodFiles() {
+      const storageKeys = [
+        ["daily", "horizonCareDailyDashboardFiles"],
+        ["weekly", "horizonCareMultiDayDashboardFiles"],
+        ["monthly", "horizonCareMultiDayDashboardFiles"]
+      ];
+      const restored = { daily: [], weekly: [], monthly: [] };
+
+      for (const [period, storageKey] of storageKeys) {
+        try {
+          const savedData = JSON.parse(localStorage.getItem(storageKey) || "{}");
+          const files = period === "daily" ? savedData.daily || [] : savedData[period] || [];
+          for (const file of files) {
+            const binary = atob(file.data);
+            const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+            const workbook = XLSX.read(bytes, {type: "array"});
+            restored[period].push({name: file.name, data: file.data, workbook, activeSheet: workbook.SheetNames[0]});
+          }
+        } catch (error) {
+          console.error("Saved dashboard files could not be restored for", period, error);
+        }
+      }
+
+      const legacySaved = {};
+      try {
+        const legacyData = JSON.parse(localStorage.getItem("horizonCarePeriodFiles") || "{}");
+        Object.assign(legacySaved, legacyData);
+      } catch (error) {
+        console.error("Legacy saved dashboard files could not be restored:", error);
+      }
+
+      for (const period of Object.keys(periodFiles)) {
+        const items = restored[period].length ? restored[period] : legacySaved[period] || [];
+        periodFiles[period] = [];
+        for (const file of items) {
+          const binary = atob(file.data);
+          const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+          const workbook = XLSX.read(bytes, {type: "array"});
+          periodFiles[period].push({name: file.name, data: file.data, workbook, activeSheet: workbook.SheetNames[0]});
+        }
+      }
+
+      dashboardMode = "daily";
+      currentPeriod = "daily";
+      uploadedFiles = periodFiles.daily;
+      renderFileList();
+      if (uploadedFiles.length) {
+        dashboardWorkbook = uploadedFiles[0].workbook;
+        generateMappedDashboardFromExcel();
+      }
+    }
+
+    function renderFileList() {
+      const renderGroup = (containerId, title, items) => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const files = items || [];
+        container.classList.toggle("active", ["daily", "weekly", "monthly"].includes(currentPeriod) && (containerId === "dailyStorageGroup" ? currentPeriod === "daily" : currentPeriod !== "daily"));
+        container.innerHTML = `
+          <div class="storage-header">
+            <h4>${title}</h4>
+            <span class="storage-badge">${files.length} file${files.length === 1 ? "" : "s"}</span>
+          </div>
+          <div class="storage-list">
+            ${files.length ? files.map(file => `
+              <div class="file-item"><strong>${file.name}</strong>
+              <button type="button" class="secondary-button remove-file" data-file="${file.name}" data-period="${file.period || "daily"}" style="float:right;padding:6px 10px">Remove</button>
+              <br><small>${classifyFile(file.name).toUpperCase()} file • ${file.period ? file.period.toUpperCase() : "DAILY"}</small></div>
+            `).join("") : '<div class="file-item"><small style="color:var(--muted)">No files uploaded yet.</small></div>'}
+          </div>
+        `;
+
+        container.querySelectorAll(".remove-file").forEach(button => {
+          button.addEventListener("click", () => {
+            const period = button.dataset.period;
+            const fileName = button.dataset.file;
+            const periodFilesList = periodFiles[period] || [];
+            const index = periodFilesList.findIndex(file => file.name === fileName);
+            if (index >= 0) periodFilesList.splice(index, 1);
+            savePeriodFiles();
+            renderFileList();
+            if (currentPeriod === period) {
+              uploadedFiles = periodFilesList;
+              if (uploadedFiles.length) generateMappedDashboardFromExcel();
+              else renderDefaultData();
+            }
+          });
+        });
+      };
+
+      const dailyFiles = (periodFiles.daily || []).map(file => ({...file, period: "daily"}));
+      const multiDayFiles = [
+        ...(periodFiles.weekly || []).map(file => ({...file, period: "weekly"})),
+        ...(periodFiles.monthly || []).map(file => ({...file, period: "monthly"}))
+      ];
+      renderGroup("dailyStorageGroup", "Daily Dashboard Files", dailyFiles);
+      renderGroup("multiDayStorageGroup", "Multi-Day Dashboard Files", multiDayFiles);
+      const selectedPeriodFiles = periodFiles[currentPeriod] || [];
+      if (selectedPeriodFiles.length) {
+        const currentLabel = currentPeriod === "daily" ? "Daily" : currentPeriod === "weekly" ? "Weekly" : "Monthly";
+        document.getElementById("uploadPeriodLabel").textContent = currentLabel;
+      }
+    }
+
+    function fillMappingSelects(headers) {
+      const selectIds = ["revenueColumn","expenseColumn","patientColumn","departmentColumn","doctorColumn","statusColumn","billColumn","appointmentColumn"];
+
+      selectIds.forEach(id => {
+        const select = document.getElementById(id);
+        select.innerHTML = '<option value="">Choose column</option>' + headers.map(h => `<option value="${h}">${h}</option>`).join("");
+      });
+    }
+
+    function updateLatestFileColumns() {
+      const firstFile = uploadedFiles[0];
+      if (!firstFile) return;
+
+      const sheet = firstFile.workbook.Sheets[firstFile.activeSheet];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+      if (!rows.length) return;
+
+      const headers = Object.keys(rows[0]);
+      fillMappingSelects(headers);
+    }
+
+    function setUploadActionStatus(message, isError = false) {
+      const status = document.getElementById("uploadActionStatus");
+      status.textContent = message;
+      status.style.color = isError ? "var(--danger)" : "var(--muted)";
+    }
+
+    function applySelectedMapping() {
+      if (!uploadedFiles.length || !dashboardWorkbook) {
+        setUploadActionStatus("Upload at least one file before applying a mapping.", true);
+        return;
+      }
+      updateLatestFileColumns();
+      generateMappedDashboardFromExcel();
+      setUploadActionStatus(`Mapping applied to ${currentPeriod} dashboard.`);
+    }
+
+    function loadDefaultDashboardData() {
+      renderDefaultData();
+      showSection("dashboard");
+      setUploadActionStatus(`Default ${currentPeriod} dashboard data loaded.`);
+    }
+
+    document.getElementById("excelUpload").addEventListener("change", async (event) => {
+      const files = Array.from(event.target.files);
+      uploadedFiles = periodFiles[currentPeriod];
+
+      for (const file of files) {
+        await uploadFileToBackend(file);
+
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+
+        const fileEntry = {
+          name: file.name,
+          data: encodeFile(arrayBuffer),
+          workbook,
+          sheetNames: workbook.SheetNames,
+          activeSheet: workbook.SheetNames.find(sheet => normalizeHeader(sheet) === "finalmaster") || workbook.SheetNames[0]
+        };
+
+        const existing = uploadedFiles.findIndex(item => classifyFile(item.name) === classifyFile(file.name));
+        if (existing >= 0) uploadedFiles.splice(existing, 1);
+        uploadedFiles.push(fileEntry);
+        savePeriodFiles();
+      }
+
+      if (uploadedFiles.length && (currentPeriod === "daily" || currentPeriod === "weekly" || currentPeriod === "monthly")) {
+        const masterFile = uploadedFiles.find(file => classifyFile(file.name) === "master");
+        dashboardWorkbook = (masterFile && masterFile.workbook) || uploadedFiles[0].workbook;
+        renderFileList();
+        updateLatestFileColumns();
+        generateMappedDashboardFromExcel();
+        setUploadActionStatus(`${currentPeriod[0].toUpperCase() + currentPeriod.slice(1)} dashboard loaded from uploaded data.`);
+        addNotification("Upload complete", `${files.length} file(s) processed for ${currentPeriod} dashboard.`, "success");
+      }
+    });
+
+    function normalizeHeader(value) {
+      return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    }
+
+    function findColumn(row, names) {
+      const wanted = names.map(normalizeHeader);
+      return Object.keys(row).find(key => wanted.includes(normalizeHeader(key))) || "";
+    }
+
+    function nonEmptyCount(rows, columnNames) {
+      if (!rows.length) return 0;
+      const column = findColumn(rows[0], columnNames);
+      return column ? rows.filter(row => String(row[column] || "").trim()).length : 0;
+    }
+
+    function numericValue(value) {
+      return Number(String(value || "").replace(/[₹$,%\s,]/g, "")) || 0;
+    }
+
+    function numericAmount(value) {
+      const text = String(value ?? "").replace(/[₹$,%\s,]/g, "");
+      if (!text) return null;
+      const amount = Number(text);
+      return Number.isFinite(amount) ? amount : null;
+    }
+
+    function uniqueCount(rows, column) {
+      return new Set(rows.map(row => String(row[column] || "").trim()).filter(Boolean)).size;
+    }
+
+    function aggregate(rows, labelColumn, valueColumn) {
+      const values = new Map();
+      rows.forEach(row => {
+        const label = String(row[labelColumn] || "").trim();
+        const id = String(row[valueColumn] || "").trim();
+        if (!label) return;
+        if (!values.has(label)) values.set(label, new Set());
+        if (id) values.get(label).add(id);
+      });
+      return [...values.entries()].map(([label, ids]) => ({label, value: ids.size})).sort((a, b) => b.value - a.value);
+    }
+
+    function aggregateRowCount(rows, labelColumn) {
+      const values = new Map();
+      rows.forEach(row => {
+        const label = String(row[labelColumn] || "").trim();
+        if (label) values.set(label, (values.get(label) || 0) + 1);
+      });
+      return [...values.entries()].map(([label, value]) => ({label, value})).sort((a, b) => b.value - a.value);
+    }
+
+    function aggregatePanelDateUhid(rows, dateColumn, panelColumn, uhidColumn) {
+      const values = new Map();
+      rows.forEach(row => {
+        const id = String(row[uhidColumn] || "").trim();
+        if (!id) return;
+        const date = excelDate(row[dateColumn]);
+        const dateLabel = date ? date.toLocaleDateString("en-IN") : "Unknown date";
+        const panel = String(row[panelColumn] || "").trim() || "Unknown panel";
+        const key = `${dateLabel} • ${panel}`;
+        if (!values.has(key)) values.set(key, new Set());
+        values.get(key).add(id);
+      });
+      return [...values.entries()]
+        .map(([label, ids]) => ({label, value: ids.size}))
+        .sort((a, b) => b.value - a.value);
+    }
+
+    function aggregateUhidByLabel(rows, labelColumn, idColumn) {
+      const values = new Map();
+      rows.forEach(row => {
+        const id = String(row[idColumn] || "").trim();
+        if (!id) return;
+        const label = String(row[labelColumn] || "").trim() || "Unknown";
+        if (!values.has(label)) values.set(label, new Set());
+        values.get(label).add(id);
+      });
+      return [...values.entries()]
+        .map(([label, ids]) => ({label, value: ids.size}))
+        .sort((a, b) => b.value - a.value);
+    }
+
+    function aggregateRevenue(rows, labelColumn, amountColumn) {
+      const values = new Map();
+      rows.forEach(row => {
+        const label = String(row[labelColumn] || "").trim();
+        const amount = numericAmount(row[amountColumn]);
+        if (!label) return;
+        if (amount !== null) values.set(label, (values.get(label) || 0) + amount);
+      });
+      return [...values.entries()].map(([label, value]) => ({label, value})).sort((a, b) => b.value - a.value);
+    }
+
+    function serviceCategory(value) {
+      const name = String(value || "").trim();
+      const normalized = name.toLowerCase().replace(/[^a-z0-9]+/g, " ");
+      if (!normalized) return "";
+      if (/\bconsult(ation)?\b/.test(normalized)) return "Consultation";
+      if (/\b(x ray|xray|radiograph|roentgen)\b/.test(normalized)) return "X-Ray";
+      if (/\b(usg|tvs|ultrasound|sonography)\b/.test(normalized)) return "Ultrasound";
+      if (/\b(mlc|vaccination|vaccine)\b/.test(normalized)) return "Others";
+      if (/\b(dialysis|injection|procedure|charge|catheter|dressing)\b/.test(normalized)) return "Procedure";
+      if (/\b(cardiology|cardiac|ecg|echo|tmt|holter)\b/.test(normalized)) return "Cardiology";
+      return "Lab Test";
+    }
+
+    function graphRows(items, type = "count", isCurrency = false, totalDisplay = "", showTotal = true) {
+      if (!items.length) return '<div style="color:var(--muted);font-size:13px">No data uploaded for this period.</div>';
+      const max = Math.max(...items.map(item => item.value), 1);
+      const rows = items.slice(0, 20).map(item => `
+        <div class="graph-row">
+          <div class="graph-label" title="${item.label}">${item.label}</div>
+          <div class="graph-track"><div class="graph-bar ${type} ${item.value === 0 ? "empty" : ""}" style="width:${item.value / max * 100}%"></div></div>
+          <div class="graph-value">${item.display || (isCurrency ? currencyFormat(item.value, 2) : item.value)}</div>
+        </div>`).join("");
+      return showTotal ? rows + `<div class="graph-total">Grand Total: <strong>${totalDisplay || (isCurrency ? currencyFormat(items.reduce((sum, item) => sum + item.value, 0), 2) : items.reduce((sum, item) => sum + item.value, 0))}</strong></div>` : rows;
+    }
+
+    function renderDailyCharts() {
+      const discharge = sourceRows(["discharge"]);
+      const bill = sourceRows(["bill"]);
+      const service = sourceRows(["service"]);
+      const ipd = sourceRows(["ipd"]);
+      const helper = sourceRows(["helper"]);
+      const dischargeSample = discharge[0] || {};
+      const billSample = bill[0] || {};
+      const serviceSample = service[0] || {};
+      const ipdSample = ipd[0] || {};
+      const dischargeUhid = findColumn(dischargeSample, ["UHID"]);
+      const billUhid = findColumn(billSample, ["UHID"]);
+      const serviceUhid = findColumn(serviceSample, ["UHID"]);
+      const dischargePanel = findColumn(dischargeSample, ["Panel Name"]);
+      const dischargeDoctor = findColumn(dischargeSample, ["Doctor Name"]);
+      const dischargeDept = findColumn(dischargeSample, ["Dept. Name"]);
+      const dischargeAmount = findColumn(dischargeSample, ["Service Final Amt"]);
+      const billDoctor = findColumn(billSample, ["Doctor Name"]);
+      const billAmount = findColumn(billSample, ["Service Final Amt"]);
+      const serviceName = findColumn(serviceSample, ["Service Name"]);
+      const ipdPanel = findColumn(ipdSample, ["Panel Name"]);
+      const ipdUhid = findColumn(ipdSample, ["UHID"]);
+      const ipdRoom = findColumn(ipdSample, ["Room Category"]);
+      const ipdDod = findColumn(ipdSample, ["Dod", "DOD"]);
+      const normalizedPanel = row => {
+        const value = String(row[ipdPanel] || "").trim().toUpperCase();
+        return ["ECHS", "CGHS", "CAPF", "DELHI POLICE", "AYUSHMAN BHARAT", "CASH"].includes(value) ? value : "TPA";
+      };
+      const panelActive = new Map();
+      ipd.forEach(row => {
+        const id = String(row[ipdUhid] || "").trim();
+        if (id && (!ipdDod || !String(row[ipdDod] || "").trim() || String(row[ipdDod]).trim() === "-")) {
+          const key = normalizedPanel(row);
+          if (!panelActive.has(key)) panelActive.set(key, new Set());
+          panelActive.get(key).add(id);
+        }
+      });
+      const activeRoom = new Map();
+      ipd.forEach(row => {
+        const id = String(row[ipdUhid] || "").trim();
+        const room = String(row[ipdRoom] || "").trim().toUpperCase();
+        if (id && (!ipdDod || !String(row[ipdDod] || "").trim() || String(row[ipdDod]).trim() === "-") && (room === "ICU" || room === "NICU")) activeRoom.set(room, (activeRoom.get(room) || new Set()).add(id));
+      });
+      const ventilatorColumn = findColumn(helper[0] || {}, ["Ventilator Usage"]);
+      const latestVentilator = helper.length ? numericAmount(helper[helper.length - 1][ventilatorColumn]) || 0 : 0;
+      const doctorDept = row => {
+        const doctor = String(row[dischargeDoctor] || "").trim();
+        const dept = String(row[dischargeDept] || "").trim();
+        return doctor || dept ? `${doctor || "Unknown"} - ${dept || "Unknown"}` : "";
+      };
+      const categorizedService = service
+        .map(row => ({...row, serviceCategory: serviceCategory(row[serviceName])}))
+        .filter(row => row.serviceCategory);
+      const serviceCounts = aggregateRowCount(categorizedService, "serviceCategory");
+      const visitType = findColumn(serviceSample, ["Visit Type Name"]);
+      const visitRows = service.filter(row => {
+        const type = String(row[visitType] || "").trim().toLowerCase();
+        return type === "dc" || type === "opd";
+      });
+      const visitCounts = aggregateRowCount(visitRows, visitType);
+      const serviceRevenue = new Map();
+      visitRows.forEach(row => {
+        const label = String(row[visitType] || "").trim();
+        const amount = numericAmount(row[findColumn(row, ["Service Final Amt"])]);
+        if (label && amount !== null) serviceRevenue.set(label, (serviceRevenue.get(label) || 0) + amount);
+      });
+      const serviceCombined = visitCounts.map(item => ({
+        label: item.label,
+        value: item.value,
+        display: `${item.value} | ${currencyFormat(serviceRevenue.get(item.label) || 0, 2)}`
+      }));
+      const doctorDeptCounts = aggregate(
+        discharge.map(row => ({...row, doctorDept: doctorDept(row)})),
+        "doctorDept",
+        dischargeUhid
+      );
+      const serviceTotalRevenue = [...serviceRevenue.values()].reduce((sum, value) => sum + value, 0);
+      const cards = [
+        ["1. Panel-wise Patient Count", "Discharge Report • unique UHID", graphRows(aggregate(discharge, dischargePanel, dischargeUhid))],
+        ["2. Doctor-Department Patient Count", "Discharge Report • unique UHID", graphRows(doctorDeptCounts)],
+        ["3. Panel-wise Active Patients", "IPD List • non-standard panels grouped as TPA", graphRows([...panelActive].map(([label, ids]) => ({label, value: ids.size})), "purple")],
+        ["4. Doctor-Department Revenue", "Discharge Report • Service Final Amt", graphRows(aggregateRevenue(discharge.map(row => ({...row, doctorDept: doctorDept(row)})), "doctorDept", dischargeAmount), "red", true)],
+        ["5. ICU / NICU + Ventilator", "IPD List + Helper Sheet", graphRows([{label:"ICU",value:(activeRoom.get("ICU") || new Set()).size},{label:"NICU",value:(activeRoom.get("NICU") || new Set()).size},{label:"Ventilator Usage",value:latestVentilator}], "count", false, "", false)],
+        ["6. Doctor-wise Revenue", "Bill Report • Service Final Amt", graphRows(aggregateRevenue(bill, billDoctor, billAmount), "red", true)],
+        ["7. Patient Count & Revenue by Visit Type", "Service Report • DC and OPD unique UHID + Service Final Amt", graphRows(serviceCombined, "count", false, `${visitCounts.reduce((sum, item) => sum + item.value, 0)} patients | ${currencyFormat(serviceTotalRevenue, 2)}`)],
+        ["8. Daily Service Count Analysis", "Service Report • common service categories + unique UHID", graphRows(serviceCounts, "gold")]
+      ];
+      document.getElementById("chartsSection").innerHTML = cards.map(card => `<div class="card graph-card"><h3>${card[0]}</h3><p>${card[1]}</p><div class="graph-list">${card[2]}</div></div>`).join("");
+    }
+
+    function periodDateRange(rows, dateColumnNames) {
+      const dateColumn = findColumn(rows[0] || {}, dateColumnNames);
+      const dates = rows.map(row => excelDate(row[dateColumn])).filter(Boolean);
+      if (!dates.length) return {dateColumn, latest: null, start: null, end: null};
+      const latest = new Date(Math.max(...dates.map(date => date.getTime())));
+      const start = new Date(latest.getFullYear(), latest.getMonth(), 1);
+      const end = new Date(latest.getFullYear(), latest.getMonth() + 1, 0, 23, 59, 59, 999);
+      return {dateColumn, latest, start, end};
+    }
+
+    function rowsInDateRange(rows, dateColumn, start, end) {
+      if (!dateColumn || !start || !end) return rows;
+      return rows.filter(row => {
+        const date = excelDate(row[dateColumn]);
+        return date && date >= start && date <= end;
+      });
+    }
+
+    function slotRows(rows, dateColumn, slot) {
+      return rows.filter(row => {
+        const date = excelDate(row[dateColumn]);
+        if (!date) return false;
+        const day = date.getDate();
+        return slot === "1-10" ? day <= 10 : slot === "11-20" ? day >= 11 && day <= 20 : day >= 21;
+      });
+    }
+
+    function uniqueAggregate(rows, labelColumn, idColumn) {
+      return aggregate(rows, labelColumn, idColumn);
+    }
+
+    function periodLineChart(labels, actual, target) {
+      const max = Math.max(...actual, ...target, 1);
+      const points = values => values.map((value, index) => `${20 + index * (260 / Math.max(values.length - 1, 1))},${125 - (value / max * 105)}`).join(" ");
+      const labelsHtml = labels.map((label, index) => `<span>${label}</span>`).join("");
+      const valueHtml = labels.map((label, index) => `<span>${label}<strong>${currencyFormat(actual[index], 0)} / ${currencyFormat(target[index], 0)}</strong></span>`).join("");
+      return `<div class="period-line-chart"><svg viewBox="0 0 300 145" role="img" aria-label="Revenue versus target revenue"><line x1="20" y1="125" x2="280" y2="125" stroke="#dfe5ef"/><polyline fill="none" stroke="#4285e8" stroke-width="3" points="${points(actual)}"/><polyline fill="none" stroke="#ef5a5a" stroke-width="3" points="${points(target)}"/>${actual.map((value, index) => `<circle cx="${20 + index * (260 / Math.max(actual.length - 1, 1))}" cy="${125 - (value / max * 105)}" r="3" fill="#4285e8"/>`).join("")}${target.map((value, index) => `<circle cx="${20 + index * (260 / Math.max(target.length - 1, 1))}" cy="${125 - (value / max * 105)}" r="3" fill="#ef5a5a"/>`).join("")}</svg><div class="line-labels">${labelsHtml}</div><div class="line-values">${valueHtml}</div><div class="line-legend"><span class="actual">Revenue</span><span class="target">Target</span></div></div>`;
+    }
+
+    function availableMonths(rows, dateColumn) {
+      return [...new Set(rows.map(row => {
+        const date = excelDate(row[dateColumn]);
+        return date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` : "";
+      }).filter(Boolean))].sort();
+    }
+
+    function renderMultiDayCharts() {
+      const discharge = sourceRows(["discharge"]);
+      const admission = sourceRows(["admission"]);
+      const service = sourceRows(["service"]);
+      const sample = discharge[0] || admission[0] || service[0] || {};
+      const dischargeUhid = findColumn(sample, ["UHID"]);
+      const admissionUhid = findColumn(admission[0] || {}, ["UHID"]);
+      const serviceUhid = findColumn(service[0] || {}, ["UHID"]);
+      const dischargeDate = findColumn(discharge[0] || {}, ["DOD"]);
+      const admissionDate = findColumn(admission[0] || {}, ["DATE", "Doa", "DOA"]);
+      const serviceDate = findColumn(service[0] || {}, ["DATE", "Service Date"]);
+      const range = periodDateRange(discharge, ["DOD"]);
+      const months = availableMonths(discharge, dischargeDate);
+      const monthSelect = document.getElementById("weeklyMonthSelect");
+      if (months.length) {
+        if (!selectedWeeklyMonth || !months.includes(selectedWeeklyMonth)) selectedWeeklyMonth = months[months.length - 1];
+        monthSelect.innerHTML = months.map(month => `<option value="${month}">${month}</option>`).join("");
+        monthSelect.value = selectedWeeklyMonth;
+      }
+      if (currentPeriod === "weekly" && selectedWeeklyMonth) {
+        const [year, month] = selectedWeeklyMonth.split("-").map(Number);
+        range.start = new Date(year, month - 1, 1);
+        range.end = new Date(year, month, 0, 23, 59, 59, 999);
+      }
+      const monthDischarge = rowsInDateRange(discharge, dischargeDate, range.start, range.end);
+      const monthAdmission = rowsInDateRange(admission, admissionDate, range.start, range.end);
+      const monthService = rowsInDateRange(service, serviceDate, range.start, range.end);
+      const slots = [
+        {label: "1–10", key: "1-10"},
+        {label: "11–20", key: "11-20"},
+        {label: "21–month-end", key: "21-end"}
+      ];
+      const slotDischarge = slots.map(slot => slotRows(monthDischarge, dischargeDate, slot.key));
+      const slotAdmission = slots.map(slot => slotRows(monthAdmission, admissionDate, slot.key));
+      const slotService = slots.map(slot => slotRows(monthService, serviceDate, slot.key));
+      const dischargePanel = findColumn(discharge[0] || {}, ["Panel Name"]);
+      const dischargeDoctor = findColumn(discharge[0] || {}, ["Doctor Name"]);
+      const dischargeDept = findColumn(discharge[0] || {}, ["Dept. Name"]);
+      const dischargeAmount = findColumn(discharge[0] || {}, ["Service Final Amt"]);
+      const creditDue = findColumn(discharge[0] || {}, ["Credit Due"]);
+      const admissionDoctor = findColumn(admission[0] || {}, ["Doctor Name"]);
+      const admissionDept = findColumn(admission[0] || {}, ["Dept. Name"]);
+      const serviceName = findColumn(service[0] || {}, ["Service Name"]);
+      const serviceDoctor = findColumn(service[0] || {}, ["Doctor Name"]);
+      const serviceDept = findColumn(service[0] || {}, ["Dept. Name"]);
+      const doctorDept = (row, doctorColumn, deptColumn) => {
+        const doctor = String(row[doctorColumn] || "").trim();
+        const dept = String(row[deptColumn] || "").trim();
+        return doctor || dept ? `${doctor || "Unknown"} - ${dept || "Unknown"}` : "";
+      };
+      const consultationRows = monthService.filter(row => /\bconsult(ation)?\b/i.test(String(row[serviceName] || "")));
+      const consultationByService = aggregateUhidByLabel(consultationRows, serviceName, serviceUhid);
+      const consultationByDepartment = aggregateUhidByLabel(consultationRows, serviceDept, serviceUhid);
+      const dischargeDoctorDept = monthDischarge.map(row => ({...row, doctorDept: doctorDept(row, dischargeDoctor, dischargeDept)}));
+      const admissionDoctorDept = monthAdmission.map(row => ({...row, doctorDept: doctorDept(row, admissionDoctor, admissionDept)}));
+      const dischargeDoctorDeptCounts = aggregateUhidByLabel(dischargeDoctorDept, "doctorDept", dischargeUhid);
+      const admissionDoctorDeptCounts = aggregateUhidByLabel(admissionDoctorDept, "doctorDept", admissionUhid);
+      const sumBySlot = (rows, amountColumn) => rows.map(slot => slot.reduce((sum, row) => sum + (numericAmount(row[amountColumn]) || 0), 0));
+      const revenueSlots = sumBySlot(slotDischarge, dischargeAmount);
+      const grandRevenue = revenueSlots.reduce((sum, value) => sum + value, 0);
+      const countSlots = slotDischarge.map(rows => new Set(rows.map(row => String(row[dischargeUhid] || "").trim()).filter(Boolean)).size);
+      const grandCount = countSlots.reduce((sum, value) => sum + value, 0);
+      const labelsWithGrand = [...slots.map(slot => slot.label), "Grand Total"];
+      const bars = (values, isCurrency = false, color = "") => graphRows(
+        [...values, values.reduce((sum, value) => sum + value, 0)].map((value, index) => ({
+          label: labelsWithGrand[index], value
+        })),
+        color, isCurrency, "", false
+      );
+      const panelItems = [];
+      const panelGroups = currentPeriod === "weekly"
+        ? slotDischarge.map((rows, index) => ({label: slots[index].label, rows}))
+        : [{label: "", rows: monthDischarge}];
+      panelGroups.forEach(group => {
+        [...new Set(group.rows.map(row => String(row[dischargePanel] || "").trim()).filter(Boolean))].forEach(label => {
+          const rows = group.rows.filter(row => String(row[dischargePanel] || "").trim() === label);
+          const revenue = rows.reduce((sum, row) => sum + (numericAmount(row[dischargeAmount]) || 0), 0);
+          const credit = rows.reduce((sum, row) => sum + (numericAmount(row[creditDue]) || 0), 0);
+          panelItems.push({label: group.label ? `${group.label} • ${label}` : label, value: revenue, credit});
+        });
+      });
+      panelItems.sort((a, b) => b.value - a.value);
+      const dateRevenue = new Map();
+      [...monthDischarge.map(row => ({row, amountColumn: dischargeAmount})), ...monthService.map(row => ({row, amountColumn: findColumn(row, ["Service Final Amt"])}))].forEach(({row, amountColumn}) => {
+        const date = excelDate(row[dischargeDate]);
+        const serviceDateValue = excelDate(row[serviceDate]);
+        const effectiveDate = serviceDateValue || date;
+        const amount = numericAmount(row[amountColumn]);
+        if (effectiveDate && amount !== null) {
+          const label = effectiveDate.toLocaleDateString("en-IN");
+          dateRevenue.set(label, (dateRevenue.get(label) || 0) + amount);
+        }
+      });
+      const dateRevenueItems = [...dateRevenue.entries()].map(([label, value]) => ({label, value})).sort((a, b) => new Date(a.label.split("/").reverse().join("-")) - new Date(b.label.split("/").reverse().join("-")));
+      const revenueTrendItems = dateRevenueItems.length <= 2
+        ? [{label: "Slot 1", value: dateRevenueItems.reduce((sum, item) => sum + item.value, 0)}]
+        : dateRevenueItems;
+      const target = 50000000;
+      const serviceRevenue = monthService.reduce((sum, row) => sum + (numericAmount(row[findColumn(row, ["Service Final Amt"])]) || 0), 0);
+      const combinedRevenue = grandRevenue + serviceRevenue;
+      const actualSlots = currentPeriod === "weekly" ? revenueSlots.map((value, index) => value + slotService[index].reduce((sum, row) => sum + (numericAmount(row[findColumn(row, ["Service Final Amt"])]) || 0), 0)) : [combinedRevenue];
+      const cumulativeActual = actualSlots.reduce((values, value) => values.concat((values[values.length - 1] || 0) + value), []);
+      const targetValues = currentPeriod === "weekly" ? [12500000, 25000000, 37500000, target] : [target];
+      const revenueValues = currentPeriod === "weekly" ? [...cumulativeActual, grandRevenue] : [grandRevenue];
+      const targetLabels = currentPeriod === "weekly" ? ["Week 1", "Week 2", "Week 3", "Grand Total"] : ["Complete month"];
+      const categorizedService = monthService.map(row => ({...row, serviceCategory: serviceCategory(row[serviceName])})).filter(row => row.serviceCategory);
+      const serviceCategoryItems = new Map();
+      categorizedService.forEach(row => {
+        const category = row.serviceCategory;
+        if (!serviceCategoryItems.has(category)) serviceCategoryItems.set(category, new Set());
+        const id = String(row[serviceUhid] || "").trim();
+        if (id) serviceCategoryItems.get(category).add(id);
+      });
+      const serviceCategories = aggregateUhidByLabel(categorizedService, "serviceCategory", serviceUhid);
+      const panelColumnMax = Math.max(...panelItems.flatMap(item => [item.value, item.credit]), 1);
+      const panelColumnRows = panelItems.map(item => {
+        const label = item.label.replace(" • ", " / ");
+        const revenueHeight = Math.max(item.value / panelColumnMax * 100, item.value ? 4 : 0);
+        const creditHeight = Math.max(item.credit / panelColumnMax * 100, item.credit ? 4 : 0);
+        return `<div class="panel-column-group"><div class="panel-column-values"><span class="panel-value-tag panel-revenue-tag">${currencyFormat(item.value, 0)}</span><span class="panel-value-tag panel-credit-tag">${currencyFormat(item.credit, 0)}</span></div><div class="panel-column-bars"><span class="panel-revenue" style="height:${revenueHeight}%"></span><span class="panel-credit" style="height:${creditHeight}%"></span></div><div class="panel-column-label" title="${item.label}">${label}</div></div>`;
+      }).join("");
+      const cards = [
+        ["1. Admission UHID Count", "Admission Report • uploaded data panel-wise unique UHID", graphRows(aggregateUhidByLabel(monthAdmission, findColumn(admission[0] || {}, ["Panel Name"]), admissionUhid))],
+        ["2. Discharge UHID Count", "Discharge Report • panel-wise unique UHID", graphRows(aggregateUhidByLabel(monthDischarge, dischargePanel, dischargeUhid))],
+        ["3. Doctor-Department Discharge UHID Count", "Discharge Report • doctor + department unique UHID", graphRows(dischargeDoctorDeptCounts)],
+        ["4. Doctor-Department Admission UHID Count", "Admission Report • doctor + department unique UHID", graphRows(admissionDoctorDeptCounts)],
+        ["5. Department-wise Consultation UHID Count", "Service Report • consultation grouped by department", graphRows(consultationByDepartment)],
+        ["6. Consultation Service UHID Count", "Service Report • service names containing consultation", graphRows(consultationByService)],
+        ["7. Doctor-Department Final Service Amount", "Discharge Report • sum of Final Service Amt", graphRows(aggregateRevenue(dischargeDoctorDept, "doctorDept", dischargeAmount), "red", true)],
+        ["8. Discharge Count by 10-day Slot", "Discharge Report • 1–10, 11–20 and 21–month-end", bars(countSlots, false, "purple")],
+        ["9. Discharge Revenue by 10-day Slot", "Discharge Report • Final Service Amt by slot", bars(revenueSlots, true, "red")],
+        ["10. Revenue Trend", "Discharge + Service Final Service Amt • Slot 1 for 1–2 dates, date-wise for 3+ dates", graphRows(revenueTrendItems, "gold", true)],
+        ["11. Service Category Row Count", `Service Report • all service rows by category (Total ${monthService.length})`, graphRows(aggregateRowCount(categorizedService, "serviceCategory"), "gold")],
+        ["12. Target vs Revenue", `Target ₹5 crore • Achieved ${currencyFormat(combinedRevenue, 0)} • Remaining ${currencyFormat(Math.max(target - combinedRevenue, 0), 0)}`, periodLineChart(targetLabels, revenueValues, targetValues)],
+        ["13. Panel Revenue and Credit Due", "Column chart • Revenue / Credit Due", `<div class="panel-chart-legend"><span class="revenue-key">Revenue</span><span class="credit-key">Credit Due</span></div>${panelColumnRows ? `<div class="panel-columns">${panelColumnRows}</div>` : '<div style="color:var(--muted)">No data uploaded for this period.</div>'}`]
+      ];
+      const wideCardIndex = cards.findIndex(([title]) => title.startsWith("13."));
+      const wideCardClass = wideCardIndex >= 0 ? " wide" : "";
+      document.getElementById("chartsSection").innerHTML = cards.map((card, index) => {
+        const isWide = index === wideCardIndex;
+        return `<div class="card graph-card${isWide ? " wide" : ""}"><h3>${card[0]}</h3><p>${card[1]}</p><div class="graph-list">${card[2]}</div></div>`;
+      }).join("");
+    }
+
+    function renderCharts() {
+      if (dashboardMode === "daily") {
+        renderDailyCharts();
+        return;
+      }
+      renderMultiDayCharts();
+    }
+
+    function excelDate(value) {
+      if (value instanceof Date) return value;
+      if (typeof value === "number") {
+        const parsed = XLSX.SSF.parse_date_code(value);
+        return parsed ? new Date(parsed.y, parsed.m - 1, parsed.d) : null;
+      }
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function sourceRows(names) {
+      const matches = uploadedFiles.filter(file => names.some(part => classifyFile(file.name) === part));
+      return matches.reduce((all, file) => {
+        const sheet = file.workbook.Sheets[file.activeSheet || file.workbook.SheetNames[0]];
+        return all.concat(XLSX.utils.sheet_to_json(sheet, { defval: "" }));
+      }, []);
+    }
+
+    function rowsForCurrentPeriod(rows) {
+      if (!rows.length) return rows;
+      const dateColumn = findColumn(rows[0], ["DATE", "Service Date", "Bill Date", "Doa", "DOA"]);
+      const dates = rows.map(row => excelDate(row[dateColumn])).filter(Boolean).sort((a, b) => a - b);
+      if (!dates.length) return rows;
+      const end = dates[dates.length - 1];
+      const start = new Date(end);
+      if (currentPeriod === "daily") start.setHours(0, 0, 0, 0);
+      if (currentPeriod === "weekly") start.setDate(start.getDate() - 6);
+      if (currentPeriod === "monthly") start.setDate(1);
+      return rows.filter(row => {
+        const date = excelDate(row[dateColumn]);
+        return date && date >= start && date <= end;
+      });
+    }
+
+    function generateMappedDashboardFromExcel() {
+      if (!dashboardWorkbook) {
+        renderDefaultData();
+        return;
+      }
+      uploadedFiles = periodFiles[currentPeriod];
+      const masterFile = uploadedFiles.find(file => classifyFile(file.name) === "master");
+      dashboardWorkbook = (masterFile && masterFile.workbook) || uploadedFiles[0]?.workbook || dashboardWorkbook;
+      const admissionRows = rowsForPeriod(sourceRows(["admission"]), ["DATE"]);
+      const dischargeRows = rowsForPeriod(sourceRows(["discharge"]), ["DATE"]);
+      const billRows = sourceRows(["bill"]);
+      const serviceRows = rowsForPeriod(sourceRows(["service"]), ["DATE"]);
+      const ipdRows = sourceRows(["ipd"]);
+      const helperRows = sourceRows(["helper"]);
+      const sample = dischargeRows[0] || billRows[0] || serviceRows[0] || ipdRows[0] || {};
+      const patient = findColumn(sample, ["Patient Name", "Name"]);
+      const doctor = findColumn(sample, ["Doctor Name"]);
+      const department = findColumn(sample, ["Dept. Name"]);
+      const amount = findColumn(sample, ["Service Final Amt"]);
+      const ipdCountColumn = findColumn(ipdRows[0] || {}, ["S No.", "UHID", "Name", "Patient Name"]);
+      const activeDodColumn = findColumn(ipdRows[0] || {}, ["Dod", "DOD"]);
+      const activeRows = ipdRows.filter(row =>
+        ipdCountColumn &&
+        String(row[ipdCountColumn] || "").trim() &&
+        (!activeDodColumn || !String(row[activeDodColumn] || "").trim() || String(row[activeDodColumn]).trim() === "-")
+      );
+      const activeUhidColumn = findColumn(ipdRows[0] || {}, ["UHID"]);
+      const activePatientIds = new Set(activeRows
+        .map(row => String(row[activeUhidColumn] || "").trim())
+        .filter(Boolean));
+      const patientSource = dischargeRows.length ? dischargeRows : ipdRows;
+      const patientRows = patientSource.filter(row => row[patient]).slice(-100).map((row, index) => ({
+        name: row[patient], dept: row[department] || "General", doctor: row[doctor] || "Assigned",
+        status: activeRows.includes(row) ? "Active" : "Discharged", bill: numericValue(row[amount]),
+        uhid: row[findColumn(row, ["UHID"])] || "", panel: row[findColumn(row, ["Panel Name"])] || "",
+        initials: String(row[patient]).split(" ").map(s => s[0]).slice(0, 2).join("").toUpperCase(),
+        color: ["a", "b", "c", "d"][index % 4]
+      }));
+      const periodKpis = calculatePeriodKpis(
+        admissionRows,
+        dischargeRows,
+        serviceRows,
+        currentPeriod !== "daily"
+      );
+      const helper = helperRows[helperRows.length - 1] || {};
+      const helperBed = findColumn(helper, ["Bed Occupancy"]);
+      const helperAvg = findColumn(helper, ["Avg Rev/Patient"]);
+      const data = {
+        revenue: periodKpis.revenue, expenses: 0, claims: 0,
+        admissions: periodKpis.admissions,
+        discharges: periodKpis.discharges,
+        opdCount: nonEmptyCount(serviceRows, ["UHID"]),
+        activePatients: activePatientIds.size,
+        averageRevenue: periodKpis.averageRevenue,
+        bedOccupancy: activeRows.length / 155 * 100,
+        patients: patientRows.length ? patientRows : defaultData.patients,
+        appointments: defaultData.appointments
+      };
+      if (dashboardMode === "multi-day") renderPeriodKpis(periodKpis);
+      else renderStats(data);
+      allPatientRows = data.patients;
+      renderPatientRows(data.patients);
+      renderAppointments(data.appointments);
+      renderEconomics(data);
+      renderCharts();
+    }
+
+    function showLogin() {
+      document.getElementById("authOverlay").classList.remove("hidden");
+      document.getElementById("loginPassword").focus();
+    }
+
+    async function login(event) {
+      event.preventDefault();
+      const error = document.getElementById("loginError");
+      error.textContent = "";
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          username: document.getElementById("loginUsername").value.trim(),
+          password: document.getElementById("loginPassword").value
+        })
+      });
+      if (!response.ok) {
+        error.textContent = "Invalid username or password.";
+        return;
+      }
+      document.getElementById("authOverlay").classList.add("hidden");
+      document.getElementById("loginPassword").value = "";
+      await loadDashboard();
+    }
+
+    let notificationItems = [
+      {title: "Dashboard synced", message: "Latest hospital data loaded successfully.", time: "Just now", type: "success"},
+      {title: "Upload complete", message: "Daily files were processed and dashboard refreshed.", time: "5 min ago", type: "info"}
+    ];
+
+    function renderNotifications() {
+      const list = document.getElementById("notificationList");
+      const badge = document.getElementById("notificationBadge");
+      if (!list) return;
+
+      list.innerHTML = notificationItems.map(item => `
+        <div class="notification-item ${item.type}">
+          <small>${item.time}</small>
+          <strong>${item.title}</strong>
+          <p>${item.message}</p>
+        </div>
+      `).join("");
+
+      if (badge) {
+        const count = notificationItems.length;
+        badge.textContent = String(count);
+        badge.style.display = count > 0 ? "grid" : "none";
+      }
+    }
+
+    function addNotification(title, message, type = "info") {
+      notificationItems.unshift({ title, message, time: "Just now", type });
+      notificationItems = notificationItems.slice(0, 6);
+      renderNotifications();
+    }
+
+    function toggleNotifications(forceOpen) {
+      const drawer = document.getElementById("notificationDrawer");
+      if (!drawer) return;
+      const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !drawer.classList.contains("open");
+      drawer.classList.toggle("open", shouldOpen);
+      drawer.setAttribute("aria-hidden", String(!shouldOpen));
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", login);
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await fetch("/api/logout", {method: "POST"});
+      showLogin();
+    });
+    document.getElementById("applyMappingBtn").addEventListener("click", applySelectedMapping);
+    document.getElementById("loadDefaultBtn").addEventListener("click", loadDefaultDashboardData);
+    document.getElementById("saveSettingsBtn").addEventListener("click", saveSettings);
+    document.getElementById("resetSettingsBtn").addEventListener("click", () => {
+      dashboardSettings = {density: "comfortable", notifications: "on", chartDetail: "full", refresh: "off"};
+      localStorage.removeItem("horizonCareSettings");
+      loadSettings();
+      document.getElementById("settingsStatus").textContent = "Settings reset to default.";
+    });
+    const notificationBtn = document.getElementById("notificationBtn");
+    const notificationClose = document.getElementById("notificationClose");
+    if (notificationBtn) {
+      notificationBtn.addEventListener("click", () => toggleNotifications());
+    }
+    if (notificationClose) {
+      notificationClose.addEventListener("click", () => toggleNotifications(false));
+    }
+    document.addEventListener("click", (event) => {
+      const drawer = document.getElementById("notificationDrawer");
+      const button = document.getElementById("notificationBtn");
+      if (!drawer || !button) return;
+      if (!drawer.contains(event.target) && event.target !== button && !button.contains(event.target)) {
+        drawer.classList.remove("open");
+        drawer.setAttribute("aria-hidden", "true");
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") toggleNotifications(false);
+    });
+    document.getElementById("downloadDashboardBtn").addEventListener("click", () => {
+      const period = currentPeriod.charAt(0).toUpperCase() + currentPeriod.slice(1);
+      const copy = document.documentElement.cloneNode(true);
+      copy.querySelectorAll("script").forEach(script => script.remove());
+      const authOverlay = copy.querySelector("#authOverlay");
+      if (authOverlay) authOverlay.classList.add("hidden");
+      const blob = new Blob([`<!DOCTYPE html>\n${copy.outerHTML}`], {type: "text/html;charset=utf-8"});
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `SURYA-Hospital-${period}-Dashboard.html`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+
+    renderNotifications();
+    loadSettings();
+    restorePeriodFiles().then(() => {
+      if (!uploadedFiles.length) loadDashboard();
+    });
+  
+</script>
+</body>
+</html>

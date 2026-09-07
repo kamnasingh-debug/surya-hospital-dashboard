@@ -1,0 +1,4 @@
+hospital.db
+uploads/
+*.log
+__pycache__/
