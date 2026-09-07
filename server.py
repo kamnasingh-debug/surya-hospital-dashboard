@@ -6,11 +6,12 @@ import secrets
 import sqlite3
 import time
 import mimetypes
+from email import policy
+from email.parser import BytesParser
 from http import cookies
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
-import cgi
 
 ROOT = Path(__file__).resolve().parent
 DB_PATH = ROOT / "hospital.db"
@@ -97,6 +98,21 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", "0"))
         return json.loads(self.rfile.read(length) or b"{}")
 
+    def read_upload(self):
+        content_type = self.headers.get("Content-Type", "")
+        if not content_type.lower().startswith("multipart/form-data"):
+            return None
+        length = int(self.headers.get("Content-Length", "0"))
+        if length > 25 * 1024 * 1024:
+            return None
+        raw = b"Content-Type: " + content_type.encode("latin-1") + b"\r\nMIME-Version: 1.0\r\n\r\n"
+        message = BytesParser(policy=policy.default).parsebytes(raw + self.rfile.read(length))
+        for part in message.iter_attachments():
+            filename = part.get_filename()
+            if filename:
+                return filename, part.get_payload(decode=True) or b""
+        return None
+
     def user(self):
         parsed = cookies.SimpleCookie(self.headers.get("Cookie", ""))
         token = parsed.get("session")
@@ -142,14 +158,14 @@ class Handler(BaseHTTPRequestHandler):
                 SESSIONS.pop(token.value, None)
             self.send_json(200, {"ok": True}, {"Set-Cookie": "session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"})
         elif path == "/api/upload" and self.require_auth():
-            form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST", "CONTENT_TYPE": self.headers.get("Content-Type", "")})
-            item = form["file"] if "file" in form else None
-            if not item or not getattr(item, "filename", None):
+            upload = self.read_upload()
+            if not upload:
                 self.send_json(400, {"error": "A file is required"})
                 return
-            name = Path(item.filename).name
+            name, contents = upload
+            name = Path(name).name
             stored = UPLOAD_DIR / (secrets.token_hex(8) + "_" + name)
-            stored.write_bytes(item.file.read())
+            stored.write_bytes(contents)
             period = self.headers.get("X-Dashboard-Period", "daily").lower()
             if period not in ("daily", "weekly", "monthly"):
                 self.send_json(400, {"error": "Invalid dashboard period"})
