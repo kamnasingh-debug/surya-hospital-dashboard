@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SURYA Hospital Multi Super Speciality</title>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="/xlsx.full.min.js"></script>
   <style>
 
     :root{
@@ -1518,7 +1518,7 @@
         ["4. Doctor-Department Revenue", "Discharge Report • Service Final Amt", graphRows(aggregateRevenue(discharge.map(row => ({...row, doctorDept: doctorDept(row)})), "doctorDept", dischargeAmount), "red", true)],
         ["5. ICU / NICU + Ventilator", "IPD List + Helper Sheet", graphRows([{label:"ICU",value:(activeRoom.get("ICU") || new Set()).size},{label:"NICU",value:(activeRoom.get("NICU") || new Set()).size},{label:"Ventilator Usage",value:latestVentilator}], "count", false, "", false)],
         ["6. Doctor-wise Revenue", "Bill Report • Service Final Amt", graphRows(aggregateRevenue(bill, billDoctor, billAmount), "red", true)],
-        ["7. Patient Count & Revenue by Visit Type", "Service Report • DC and OPD unique UHID + Service Final Amt", graphRows(serviceCombined, "count", false, `${visitCounts.reduce((sum, item) => sum + item.value, 0)} patients | ${currencyFormat(serviceTotalRevenue, 2)}`)],
+        ["7. PATIENT COUNT & REVENUE BY SERVICE REPORT", "Service Report • DC and OPD unique UHID + Service Final Amt", graphRows(serviceCombined, "count", false, `${visitCounts.reduce((sum, item) => sum + item.value, 0)} patients | ${currencyFormat(serviceTotalRevenue, 2)}`)],
         ["8. Daily Service Count Analysis", "Service Report • common service categories + unique UHID", graphRows(serviceCounts, "gold")]
       ];
       document.getElementById("chartsSection").innerHTML = cards.map(card => `<div class="card graph-card"><h3>${card[0]}</h3><p>${card[1]}</p><div class="graph-list">${card[2]}</div></div>`).join("");
@@ -1728,7 +1728,16 @@
         const parsed = XLSX.SSF.parse_date_code(value);
         return parsed ? new Date(parsed.y, parsed.m - 1, parsed.d) : null;
       }
-      const date = new Date(value);
+      const text = String(value ?? "").trim();
+      if (!text) return null;
+      const dayFirst = text.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})(?:\s|$)/);
+      if (dayFirst) {
+        const date = new Date(Number(dayFirst[3]), Number(dayFirst[2]) - 1, Number(dayFirst[1]));
+        return date.getFullYear() === Number(dayFirst[3])
+          && date.getMonth() === Number(dayFirst[2]) - 1
+          && date.getDate() === Number(dayFirst[1]) ? date : null;
+      }
+      const date = new Date(text);
       return Number.isNaN(date.getTime()) ? null : date;
     }
 
