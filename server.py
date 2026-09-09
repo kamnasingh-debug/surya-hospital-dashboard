@@ -65,11 +65,12 @@ def ensure_admin():
     configured_password = os.environ.get("ADMIN_PASSWORD")
     with connect() as connection:
         admin = connection.execute("SELECT 1 FROM admins WHERE username = 'admin'").fetchone()
-        if admin and configured_password:
-            connection.execute(
-                "UPDATE admins SET password_hash = ? WHERE username = 'admin'",
-                (hash_password(configured_password),),
-            )
+        if admin:
+            if configured_password:
+                connection.execute(
+                    "UPDATE admins SET password_hash = ? WHERE username = 'admin'",
+                    (hash_password(configured_password),),
+                )
             return
         password = configured_password or secrets.token_urlsafe(12)
         connection.execute(
@@ -113,7 +114,9 @@ class Handler(BaseHTTPRequestHandler):
             return None
         raw = b"Content-Type: " + content_type.encode("latin-1") + b"\r\nMIME-Version: 1.0\r\n\r\n"
         message = BytesParser(policy=policy.default).parsebytes(raw + self.rfile.read(length))
-        for part in message.iter_attachments():
+        for part in message.walk():
+            if part.is_multipart():
+                continue
             filename = part.get_filename()
             if filename:
                 return filename, part.get_payload(decode=True) or b""
@@ -135,7 +138,7 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == "/healthz":
             self.send_json(200, {"status": "ok"})
-        elif path == "/" or path in ("/index.html", "/app.js", "/styles.css"):
+        elif path == "/" or path in ("/index.html", "/app.js", "/styles.css", "/xlsx.full.min.js"):
             file_name = "index.html" if path == "/" else path.lstrip("/")
             self.send_file(ROOT / file_name)
         elif path == "/api/me":
