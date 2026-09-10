@@ -1,5 +1,4 @@
-
-    :root{
+:root{
       --bg:#f4f7fb;
       --panel:#ffffff;
       --panel-alt:#f7f9fe;
@@ -66,11 +65,25 @@
       background:transparent;border:none;outline:none;width:100%;color:var(--text);
     }
     .notify{
-      position:relative;width:44px;height:44px;border-radius:14px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;box-shadow:var(--shadow);
+      position:relative;width:44px;height:44px;border-radius:14px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;box-shadow:var(--shadow);cursor:pointer;
     }
     .notify::after{
       content:"";position:absolute;right:8px;top:8px;width:8px;height:8px;border-radius:50%;background:var(--danger);border:2px solid #fff;
     }
+    .notify-badge{position:absolute;right:-2px;top:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ef5a5a;color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;border:2px solid #fff}
+    .notification-drawer{position:fixed;top:24px;right:24px;width:min(360px,calc(100vw - 32px));background:rgba(255,255,255,.97);backdrop-filter:blur(10px);box-shadow:0 18px 42px rgba(15,23,42,.18);border:1px solid rgba(148,163,184,.35);border-radius:18px;padding:0;z-index:50;transform:translateY(-12px);opacity:0;visibility:hidden;transition:all .2s ease}
+    .notification-drawer.open{transform:translateY(0);opacity:1;visibility:visible}
+    .notification-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+    .notification-header h3{margin:0;font-size:1.04rem}
+    .notification-close{border:none;background:transparent;color:var(--muted);font-size:1.2rem;cursor:pointer}
+    .notification-list{padding:10px 12px 12px;display:grid;gap:8px;max-height:440px;overflow:auto}
+    .notification-item{padding:12px 12px;border-radius:12px;background:#f8fafc;border:1px solid transparent;display:grid;gap:5px}
+    .notification-item.info{border-color:#dbeafe;background:#eff6ff}
+    .notification-item.success{border-color:#dcfce7;background:#f0fdf4}
+    .notification-item.warning{border-color:#fef3c7;background:#fffbeb}
+    .notification-item small{color:var(--muted);font-size:11px}
+    .notification-item strong{font-size:.95rem;color:#1f2937}
+    .notification-item p{margin:0;color:#475569;font-size:.83rem;line-height:1.45}
     .profile{
       display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:6px 10px 6px 6px;box-shadow:var(--shadow);
     }
@@ -244,6 +257,21 @@
     .settings-note{margin:0;color:var(--muted);font-size:13px}
     .header-button{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:#fff;color:var(--text);cursor:pointer;font-weight:600;white-space:nowrap}
     .header-button:hover{background:#eaf1ff;color:var(--secondary)}
+    .notify{position:relative;width:44px;height:44px;border-radius:14px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;box-shadow:var(--shadow);cursor:pointer}
+    .notify-badge{position:absolute;right:-2px;top:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ef5a5a;color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;border:2px solid #fff}
+    .notification-drawer{position:fixed;top:24px;right:24px;width:min(360px,calc(100vw - 32px));background:rgba(255,255,255,.97);backdrop-filter:blur(10px);box-shadow:0 18px 42px rgba(15,23,42,.18);border:1px solid rgba(148,163,184,.35);border-radius:18px;padding:0;z-index:50;transform:translateY(-12px);opacity:0;visibility:hidden;transition:all .2s ease}
+    .notification-drawer.open{transform:translateY(0);opacity:1;visibility:visible}
+    .notification-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+    .notification-header h3{margin:0;font-size:1.04rem}
+    .notification-close{border:none;background:transparent;color:var(--muted);font-size:1.2rem;cursor:pointer}
+    .notification-list{padding:10px 12px 12px;display:grid;gap:8px;max-height:440px;overflow:auto}
+    .notification-item{padding:12px 12px;border-radius:12px;background:#f8fafc;border:1px solid transparent;display:grid;gap:5px}
+    .notification-item.info{border-color:#dbeafe;background:#eff6ff}
+    .notification-item.success{border-color:#dcfce7;background:#f0fdf4}
+    .notification-item.warning{border-color:#fef3c7;background:#fffbeb}
+    .notification-item small{color:var(--muted);font-size:11px}
+    .notification-item strong{font-size:.95rem;color:#1f2937}
+    .notification-item p{margin:0;color:#475569;font-size:.83rem;line-height:1.45}
     .dashboard-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
     .data-source{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
     .data-source strong{color:var(--text)}
@@ -252,10 +280,12 @@
     .period-month-control select{border:1px solid var(--line);border-radius:7px;padding:4px 7px;background:#fff;color:var(--text)}
     .charts-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:300px;gap:14px;margin-bottom:12px;min-width:0;align-items:stretch}
     .graph-card{padding:14px;min-height:0;min-width:0;overflow:hidden;display:flex;flex-direction:column}.graph-card h3{margin:0 0 4px;font-size:.92rem;overflow-wrap:anywhere;line-height:1.25}
-    .graph-card.wide{grid-column:span 3;min-height:330px;max-height:330px;grid-row:span 1}
+    .graph-card.wide{grid-column:span 3;min-height:300px;max-height:300px;grid-row:span 1}
     .graph-card p{margin:0 0 9px;color:var(--muted);font-size:10px}
     .graph-list{display:grid;gap:6px;min-height:0;flex:1;overflow:hidden;padding-right:2px}
-    .graph-card.wide .graph-list{overflow:hidden}
+    .graph-card.has-grand-total .graph-list{overflow-y:auto}
+    .graph-card.has-line-chart .graph-list{overflow:visible}
+    .graph-card.wide .graph-list{overflow:visible;min-height:0}
     .graph-row{display:grid;grid-template-columns:minmax(70px,1.1fr) minmax(0,2fr) minmax(78px,auto);gap:9px;align-items:center;font-size:12px}
     .graph-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.graph-track{height:17px;background:#edf2f7;border-radius:5px;overflow:hidden}
     .graph-bar{height:100%;background:linear-gradient(90deg,var(--primary),#58c6d0);border-radius:5px;min-width:2px}
@@ -263,6 +293,7 @@
     .graph-bar.red{background:linear-gradient(90deg,#ef5a5a,#ff9b85)}.graph-bar.purple{background:linear-gradient(90deg,#7a8ef5,#b9c7ff)}
     .graph-bar.gold{background:linear-gradient(90deg,#f6b73c,#f9d787)}.graph-value{text-align:right;font-weight:700;white-space:nowrap}
     .graph-total{margin-top:14px;padding-top:10px;border-top:1px solid var(--line);text-align:right;font-size:13px}
+    .panel-grand-total{margin:0 0 8px;text-align:right;font-size:12px;color:var(--muted)}.panel-grand-total strong{color:var(--text)}
     .period-comparison{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .period-comparison .graph-card{min-width:0}
     .period-comparison .graph-card{padding:0;border:0;box-shadow:none}
@@ -275,21 +306,22 @@
     .panel-bars span{display:block;height:12px;border-radius:3px;min-width:2px}
     .panel-revenue{background:#ef5a5a}.panel-credit{background:#7a8ef5}
     .panel-values{text-align:right;font-weight:700;white-space:nowrap}
-    .panel-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:12px;align-items:end;min-height:180px;padding:12px 10px 0;border-bottom:1px solid var(--line);width:100%}
+    .panel-slot-group{margin-top:12px}.panel-slot-group>strong{display:block;color:var(--text);font-size:12px;margin-bottom:4px}.panel-slot-empty{color:var(--muted);font-size:12px;align-self:center}
+    .panel-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:12px;align-items:end;min-height:0;padding:8px 10px 0;border-bottom:1px solid var(--line);width:100%}
     .panel-column-group{display:grid;gap:6px;align-items:end;text-align:center;min-width:0}
     .panel-column-values{display:flex;justify-content:center;align-items:center;gap:5px;min-height:26px;flex-wrap:wrap}
     .panel-value-tag{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:2px 6px;font-size:8px;font-weight:700;line-height:1.3;white-space:nowrap;max-width:100%;box-shadow:inset 0 0 0 1px rgba(15,23,42,.04)}
     .panel-revenue-tag{background:rgba(239,90,90,.12);color:#d94a4a}
     .panel-credit-tag{background:rgba(122,142,245,.12);color:#4d63d6}
-    .panel-column-bars{height:135px;display:flex;align-items:end;justify-content:center;gap:5px}
+    .panel-column-bars{height:90px;display:flex;align-items:end;justify-content:center;gap:5px}
     .panel-column-bars span{width:22px;min-height:2px;border-radius:5px 5px 0 0;position:relative}
-    .panel-column-label{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .panel-column-label{font-size:11px;color:var(--text);overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:anywhere;line-height:1.2;min-height:26px}
     .line-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--muted)}
     .period-line-chart{height:175px;display:flex;flex-direction:column;gap:5px}
     .period-line-chart svg{width:100%;height:135px;overflow:visible}
     .period-line-chart .line-legend{display:flex;justify-content:center;gap:14px;font-size:10px;color:var(--muted)}
     .line-values{display:grid;grid-template-columns:repeat(auto-fit,minmax(58px,1fr));gap:4px;font-size:9px;color:var(--muted);text-align:center}
-    .line-values strong{display:block;color:var(--text);font-size:10px}
+    .line-values strong{display:block;font-size:10px}.line-values em{display:block;font-style:normal}.actual-value{color:#4285e8}.target-value{color:#ef5a5a}
     .line-legend span::before{content:"";display:inline-block;width:16px;border-top:3px solid currentColor;vertical-align:middle;margin-right:4px}
     .line-legend .actual{color:#4285e8}.line-legend .target{color:#ef5a5a}
 
@@ -315,4 +347,3 @@
       .charts-grid,.period-comparison{grid-template-columns:1fr}
       .graph-card.wide{grid-column:span 1}
     }
-  

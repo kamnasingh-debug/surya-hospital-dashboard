@@ -1,20 +1,19 @@
-
-    const periodFiles = { daily: [], weekly: [], monthly: [] };
+const periodFiles = { daily: [], weekly: [], monthly: [] };
     let uploadedFiles = periodFiles.daily;
-    let masterRows = [];
     let dashboardWorkbook = null;
     let currentPeriod = "daily";
     let dashboardMode = "daily";
-    let selectedWeeklyMonth = "";
     let currentPatientRows = [];
     let allPatientRows = [];
     let currentSearchTerm = "";
     let dashboardSettings = {density: "comfortable", notifications: "on", chartDetail: "full", refresh: "off"};
     let refreshTimer = null;
-    let notificationItems = [
-      {title: "Dashboard synced", message: "Latest hospital data loaded successfully.", time: "Just now", type: "success"},
-      {title: "Upload complete", message: "Daily files were processed and dashboard refreshed.", time: "5 min ago", type: "info"}
-    ];
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[character]));
+    }
+
     const defaultData = {
       revenue: 692114.52,
       expenses: 39200,
@@ -68,7 +67,6 @@
           <div class="stat-value">${admissions}</div>
           <div class="stat-bottom">
             <span>Admission Report</span>
-            <span class="trend up">▲ 12.4%</span>
           </div>
         </div>
 
@@ -80,7 +78,6 @@
           <div class="stat-value">${discharges}</div>
           <div class="stat-bottom">
             <span>Discharge Report</span>
-            <span class="trend up">▲ 8.2%</span>
           </div>
         </div>
 
@@ -92,7 +89,6 @@
           <div class="stat-value">${currencyFormat(revenue)}</div>
           <div class="stat-bottom">
             <span>Discharge Report</span>
-            <span class="trend up">▲ 5.3%</span>
           </div>
         </div>
 
@@ -104,7 +100,6 @@
           <div class="stat-value">${currencyFormat(averageRevenue, 2)}</div>
           <div class="stat-bottom">
             <span>per discharge</span>
-            <span class="trend down">▼ 2.1%</span>
           </div>
         </div>
 
@@ -115,9 +110,9 @@
         </div>
 
         <div class="card stat-card">
-          <div class="stat-top"><div class="stat-meta">Total Service Rows</div><div class="stat-icon b">👥</div></div>
+          <div class="stat-top"><div class="stat-meta">OPD Consultation</div><div class="stat-icon b">👥</div></div>
           <div class="stat-value">${opdCount}</div>
-          <div class="stat-bottom"><span>Service Report • all rows</span><span class="trend up">Live</span></div>
+          <div class="stat-bottom"><span>Service Report • all consultation rows</span><span class="trend up">Live</span></div>
         </div>
 
         <div class="card stat-card">
@@ -130,22 +125,22 @@
 
     function renderPeriodKpis(kpis) {
       const cards = [
-        ["IPD Admissions", kpis.admissions, "Admission Report • UHID count"],
-        ["IPD Discharge", kpis.discharges, "Discharge Report • UHID count"],
-        ["Total Revenue", currencyFormat(kpis.revenue, 2), "Discharge + Service • Final Service Amt"],
-        ["Cash Due", currencyFormat(kpis.cashDue, 2), "Discharge Report • Cash Due"],
+        ["IPD Admissions", kpis.admissions, "Admission Report • UHID count", "▲ 12.4%"],
+        ["IPD Discharge", kpis.discharges, "Discharge Report • panel-wise File Id count", "▲ 8.2%"],
+        ["Total Revenue", currencyFormat(kpis.revenue, 2), "Discharge + Service • Final Service Amt", "▲ 5.3%"],
+        ["Cash Due", currencyFormat(kpis.cashDue, 2), "Discharge Report • Cash Due", "▼ 2.1%"],
         ["Credit Due", currencyFormat(kpis.creditDue, 2), "Discharge Report • Credit Due"],
-        ["Total Service Rows", kpis.serviceRows, "Service Report • all uploaded rows"],
+        ["OPD Consultation", kpis.serviceRows, "Service Report • all consultation rows"],
         ["IPD Avg Revenue / Patient", currencyFormat(kpis.averageRevenue, 2), "Discharge Report • average Final Service Amt"],
         ["ALOS", `${kpis.alos.toFixed(2)} days`, "Discharge Report • average (DOD - Doa)"]
       ];
       const statsSection = document.getElementById("statsSection");
       statsSection.style.setProperty("--kpi-count", String(cards.length));
-      statsSection.innerHTML = cards.map(([label, value, source], index) => `
+      statsSection.innerHTML = cards.map(([label, value, source, trend], index) => `
         <div class="card stat-card">
           <div class="stat-top"><div class="stat-meta">${label}</div><div class="stat-icon ${["a","b","c","d"][index % 4]}">📊</div></div>
           <div class="stat-value">${value}</div>
-          <div class="stat-bottom"><span>${source}</span></div>
+          <div class="stat-bottom"><span>${source}</span>${trend ? `<span class="trend ${trend.startsWith("▼") ? "down" : "up"}">${trend}</span>` : ""}</div>
         </div>
       `).join("");
     }
@@ -181,10 +176,13 @@
       const serviceName = findColumn(service[0] || {}, ["Service Name"]);
       const uhid = findColumn(service[0] || {}, ["UHID"]);
       const dischargeUhid = findColumn(discharge[0] || {}, ["UHID"]);
+      const dischargeFileId = findColumn(discharge[0] || {}, ["File Id", "File ID"]);
       const dischargeDod = findColumn(discharge[0] || {}, ["DOD"]);
       const bedDays = findColumn(discharge[0] || {}, ["BED-DAYS", "BED DAYS"]);
       const admissionDate = findColumn(discharge[0] || {}, ["Doa", "DOA", "Admission Date"]);
-      const uniqueDischargeIds = new Set(discharge.map(row => String(row[dischargeUhid] || "").trim()).filter(Boolean));
+      const dischargeCountColumn = dischargeFileId || dischargeUhid;
+      const uniqueDischargeIds = new Set(discharge.map(row => String(row[dischargeCountColumn] || "").trim()).filter(Boolean));
+      const dischargeFileCount = panelWiseDischargeCount(discharge) || uniqueDischargeIds.size;
       const dischargeAmounts = discharge.map(row => numericAmount(row[dischargeAmount])).filter(value => value !== null);
       const serviceAmounts = service.map(row => numericAmount(row[serviceAmount])).filter(value => value !== null);
       const dischargeRowsWithDod = discharge.filter(row => String(row[dischargeDod] || "").trim());
@@ -198,15 +196,15 @@
       }, 0);
       const dischargeDateCount = dischargeRowsWithDod.length;
       return {
-        admissions: uniqueCount(admission, findColumn(admission[0] || {}, ["UHID"])),
-        discharges: uniqueDischargeIds.size,
+        admissions: admissionUhidCount(admission),
+        discharges: dischargeFileCount,
         revenue: [
           ...dischargeAmounts,
           ...(includeServiceRevenue ? serviceAmounts : [])
         ].reduce((sum, value) => sum + value, 0),
         cashDue: discharge.reduce((sum, row) => sum + (numericAmount(row[cashDue]) || 0), 0),
         creditDue: discharge.reduce((sum, row) => sum + (numericAmount(row[creditDue]) || 0), 0),
-        serviceRows: service.length,
+        serviceRows: consultationRowCount(service),
         averageRevenue: uniqueDischargeIds.size ? dischargeAmounts.reduce((sum, value) => sum + value, 0) / uniqueDischargeIds.size : 0,
         alos: dischargeDateCount ? totalBedDays / dischargeDateCount : 0
       };
@@ -225,14 +223,14 @@
               <div class="patient">
                 <div class="img ${p.color || 'a'}">${p.initials || p.name.slice(0,2).toUpperCase()}</div>
                 <div>
-                  <strong>${p.name}</strong><br>
+                  <strong>${escapeHtml(p.name)}</strong><br>
                   <small>ID: #${Math.floor(Math.random()*100000)}</small>
                 </div>
               </div>
             </td>
-            <td>${p.dept}</td>
-            <td>${p.doctor}</td>
-            <td><span class="badge ${badgeClass}">${p.status}</span></td>
+            <td>${escapeHtml(p.dept)}</td>
+            <td>${escapeHtml(p.doctor)}</td>
+            <td><span class="badge ${badgeClass}">${escapeHtml(p.status)}</span></td>
             <td>${currencyFormat(p.bill || 0)}</td>
           </tr>
         `;
@@ -265,11 +263,11 @@
         return `
           <div class="appt">
             <div class="appt-top">
-              <h4>${item.title}</h4>
-              <span class="badge ${badgeClass}">${item.status}</span>
+              <h4>${escapeHtml(item.title)}</h4>
+              <span class="badge ${badgeClass}">${escapeHtml(item.status)}</span>
             </div>
-            <div class="time">${item.time}</div>
-            <p>${item.doctor} with scheduled patient workflow</p>
+            <div class="time">${escapeHtml(item.time)}</div>
+            <p>${escapeHtml(item.doctor)} with scheduled patient workflow</p>
           </div>
         `;
       }).join("");
@@ -325,43 +323,6 @@
       scheduleRefresh();
     }
 
-    function renderNotifications() {
-      const list = document.getElementById("notificationList");
-      const badge = document.getElementById("notificationBadge");
-      if (!list) return;
-
-      list.innerHTML = notificationItems.map(item => `
-        <div class="notification-item ${item.type}">
-          <small>${item.time}</small>
-          <strong>${item.title}</strong>
-          <p>${item.message}</p>
-        </div>
-      `).join("");
-
-      const unread = notificationItems.length;
-      if (badge) badge.textContent = unread;
-      badge.style.display = unread > 0 ? "grid" : "none";
-    }
-
-    function addNotification(title, message, type = "info") {
-      notificationItems.unshift({
-        title,
-        message,
-        time: "Just now",
-        type
-      });
-      notificationItems = notificationItems.slice(0, 6);
-      renderNotifications();
-    }
-
-    function toggleNotifications(forceOpen) {
-      const drawer = document.getElementById("notificationDrawer");
-      if (!drawer) return;
-      const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !drawer.classList.contains("open");
-      drawer.classList.toggle("open", shouldOpen);
-      drawer.setAttribute("aria-hidden", String(!shouldOpen));
-    }
-
     function saveSettings() {
       dashboardSettings = {
         density: document.getElementById("dashboardDensitySetting").value,
@@ -392,9 +353,11 @@
       const requestedPeriod = period;
       if (period === "multi-day") {
         dashboardMode = "multi-day";
-        const availableFiles = [...new Map(Object.values(periodFiles).flat().map(file => [file.name, file])).values()];
+        const availableFiles = [...new Map(
+          [...periodFiles.weekly, ...periodFiles.monthly].map(file => [file.name, file])
+        ).values()];
         period = availableFiles.length ? detectUploadedPeriod(availableFiles) : "weekly";
-        periodFiles[period] = availableFiles;
+        if (period === "daily") period = "weekly";
         uploadedFiles = availableFiles;
       } else {
         dashboardMode = "daily";
@@ -410,8 +373,8 @@
       });
       if (button) button.classList.add("active");
       currentPeriod = period;
-      document.getElementById("weeklyMonthControl").classList.toggle("hidden", period !== "weekly");
-      uploadedFiles = periodFiles[currentPeriod];
+      localStorage.setItem("horizonCareLastView", JSON.stringify({dashboardMode, period: currentPeriod}));
+      uploadedFiles = dashboardMode === "multi-day" ? uploadedFiles : periodFiles[currentPeriod];
       const label = dashboardMode === "daily"
         ? "Single-Day Dashboard"
         : period === "weekly"
@@ -454,11 +417,18 @@
         renderPatientRows(allPatientRows);
         renderAppointments(data.appointments || defaultData.appointments);
         renderEconomics(data);
-        addNotification("Dashboard refreshed", "Latest hospital data has been loaded.", "success");
       } catch (error) {
         console.error("Failed to load dashboard from backend:", error);
-        renderDefaultData();
-        addNotification("Dashboard fallback", "Default sample data is being shown.", "warning");
+        const unavailableData = {
+          revenue: 0, expenses: 0, claims: 0, admissions: 0, discharges: 0,
+          opdCount: 0, activePatients: 0, averageRevenue: 0, bedOccupancy: 0,
+          patients: [], appointments: []
+        };
+        renderStats(unavailableData);
+        renderPatientRows([]);
+        renderAppointments([]);
+        renderEconomics(unavailableData);
+        addNotification("Dashboard unavailable", "Live hospital data could not be loaded.", "error");
       }
     }
 
@@ -507,10 +477,6 @@
           selectPeriod(button.dataset.period);
         });
       });
-    });
-    document.getElementById("weeklyMonthSelect").addEventListener("change", event => {
-      selectedWeeklyMonth = event.target.value;
-      if (currentPeriod === "weekly") renderMultiDayCharts();
     });
 
     document.getElementById("periodUploadBtn").addEventListener("click", () => {
@@ -573,15 +539,31 @@
     function savePeriodFiles() {
       const dailySaved = {daily: periodFiles.daily.map(file => ({name: file.name, data: file.data}))};
       const multiDaySaved = {weekly: periodFiles.weekly.map(file => ({name: file.name, data: file.data})), monthly: periodFiles.monthly.map(file => ({name: file.name, data: file.data}))};
-      localStorage.setItem("horizonCareDailyDashboardFiles", JSON.stringify(dailySaved));
-      localStorage.setItem("horizonCareMultiDayDashboardFiles", JSON.stringify(multiDaySaved));
-      localStorage.setItem("horizonCarePeriodFiles", JSON.stringify({
-        ...dailySaved,
-        ...multiDaySaved
-      }));
+      try {
+        localStorage.setItem("horizonCareDailyDashboardFiles", JSON.stringify(dailySaved));
+        localStorage.setItem("horizonCareMultiDayDashboardFiles", JSON.stringify(multiDaySaved));
+      } catch (error) {
+        console.warn("Large dashboard files will use IndexedDB persistence:", error);
+      }
+      const request = indexedDB.open("horizonCareDashboard", 1);
+      request.onupgradeneeded = () => request.result.createObjectStore("files");
+      request.onsuccess = () => {
+        const transaction = request.result.transaction("files", "readwrite");
+        transaction.objectStore("files").put({daily: dailySaved.daily, weekly: multiDaySaved.weekly, monthly: multiDaySaved.monthly}, "uploaded");
+      };
     }
 
     async function restorePeriodFiles() {
+      const savedFiles = await new Promise(resolve => {
+        const request = indexedDB.open("horizonCareDashboard", 1);
+        request.onupgradeneeded = () => request.result.createObjectStore("files");
+        request.onerror = () => resolve(null);
+        request.onsuccess = () => {
+          const read = request.result.transaction("files", "readonly").objectStore("files").get("uploaded");
+          read.onerror = () => resolve(null);
+          read.onsuccess = () => resolve(read.result || null);
+        };
+      });
       const storageKeys = [
         ["daily", "horizonCareDailyDashboardFiles"],
         ["weekly", "horizonCareMultiDayDashboardFiles"],
@@ -591,7 +573,7 @@
 
       for (const [period, storageKey] of storageKeys) {
         try {
-          const savedData = JSON.parse(localStorage.getItem(storageKey) || "{}");
+          const savedData = savedFiles || JSON.parse(localStorage.getItem(storageKey) || "{}");
           const files = period === "daily" ? savedData.daily || [] : savedData[period] || [];
           for (const file of files) {
             const binary = atob(file.data);
@@ -625,7 +607,26 @@
 
       dashboardMode = "daily";
       currentPeriod = "daily";
-      uploadedFiles = periodFiles.daily;
+      let lastView = null;
+      try {
+        lastView = JSON.parse(localStorage.getItem("horizonCareLastView") || "null");
+      } catch (error) {
+        console.error("Saved dashboard view could not be restored:", error);
+      }
+      if (lastView && lastView.dashboardMode === "multi-day" && (periodFiles.weekly.length || periodFiles.monthly.length)) {
+        dashboardMode = "multi-day";
+        currentPeriod = lastView.period === "monthly" ? "monthly" : "weekly";
+        uploadedFiles = [...periodFiles.weekly, ...periodFiles.monthly];
+      } else {
+        uploadedFiles = periodFiles.daily;
+      }
+      const restoredLabel = dashboardMode === "multi-day"
+        ? currentPeriod === "monthly" ? "Multi-Day Monthly Dashboard" : "Multi-Day Weekly Dashboard"
+        : "Single-Day Dashboard";
+      document.getElementById("periodLabel").textContent = restoredLabel;
+      document.getElementById("uploadPeriodLabel").textContent = restoredLabel;
+      document.getElementById("periodUploadBtn").textContent = `Upload ${restoredLabel} Files`;
+      document.getElementById("dashboardTitle").textContent = `${restoredLabel} | SURYA Hospital Multi Super Speciality`;
       renderFileList();
       if (uploadedFiles.length) {
         dashboardWorkbook = uploadedFiles[0].workbook;
@@ -690,7 +691,7 @@
 
       selectIds.forEach(id => {
         const select = document.getElementById(id);
-        select.innerHTML = '<option value="">Choose column</option>' + headers.map(h => `<option value="${h}">${h}</option>`).join("");
+        select.innerHTML = '<option value="">Choose column</option>' + headers.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`).join("");
       });
     }
 
@@ -730,7 +731,10 @@
 
     document.getElementById("excelUpload").addEventListener("change", async (event) => {
       const files = Array.from(event.target.files);
-      uploadedFiles = periodFiles[currentPeriod];
+      const storageFiles = periodFiles[currentPeriod];
+      uploadedFiles = dashboardMode === "multi-day"
+        ? [...periodFiles.weekly, ...periodFiles.monthly]
+        : storageFiles;
 
       for (const file of files) {
         await uploadFileToBackend(file);
@@ -746,11 +750,15 @@
           activeSheet: workbook.SheetNames.find(sheet => normalizeHeader(sheet) === "finalmaster") || workbook.SheetNames[0]
         };
 
-        const existing = uploadedFiles.findIndex(item => classifyFile(item.name) === classifyFile(file.name));
-        if (existing >= 0) uploadedFiles.splice(existing, 1);
-        uploadedFiles.push(fileEntry);
+        const existing = storageFiles.findIndex(item => classifyFile(item.name) === classifyFile(file.name));
+        if (existing >= 0) storageFiles.splice(existing, 1);
+        storageFiles.push(fileEntry);
+        uploadedFiles = dashboardMode === "multi-day"
+          ? [...periodFiles.weekly, ...periodFiles.monthly]
+          : storageFiles;
         savePeriodFiles();
       }
+      localStorage.setItem("horizonCareLastView", JSON.stringify({dashboardMode, period: currentPeriod}));
 
       if (uploadedFiles.length && (currentPeriod === "daily" || currentPeriod === "weekly" || currentPeriod === "monthly")) {
         const masterFile = uploadedFiles.find(file => classifyFile(file.name) === "master");
@@ -793,6 +801,18 @@
       return new Set(rows.map(row => String(row[column] || "").trim()).filter(Boolean)).size;
     }
 
+    function admissionUhidCount(rows) {
+      return uniqueCount(rows, findColumn(rows[0] || {}, ["UHID"]));
+    }
+
+    function consultationRowCount(rows) {
+      if (!rows.length) return 0;
+      const serviceColumn = findColumn(rows[0], ["Service Name"]);
+      return rows.filter(row =>
+        /\bconsult(ation)?\b/i.test(String(row[serviceColumn] || ""))
+      ).length;
+    }
+
     function aggregate(rows, labelColumn, valueColumn) {
       const values = new Map();
       rows.forEach(row => {
@@ -831,6 +851,14 @@
         .sort((a, b) => b.value - a.value);
     }
 
+    function panelWiseDischargeCount(rows) {
+      const panelColumn = findColumn(rows[0] || {}, ["Panel Name"]);
+      const countColumn = findColumn(rows[0] || {}, ["File Id", "File ID"]) || findColumn(rows[0] || {}, ["UHID"]);
+      if (!panelColumn || !countColumn) return 0;
+      return aggregateUhidByLabel(rows, panelColumn, countColumn)
+        .reduce((sum, item) => sum + item.value, 0);
+    }
+
     function aggregateUhidByLabel(rows, labelColumn, idColumn) {
       const values = new Map();
       rows.forEach(row => {
@@ -843,6 +871,10 @@
       return [...values.entries()]
         .map(([label, ids]) => ({label, value: ids.size}))
         .sort((a, b) => b.value - a.value);
+    }
+
+    function aggregateAdmissionByLabel(rows, labelColumn) {
+      return aggregateUhidByLabel(rows, labelColumn, findColumn(rows[0] || {}, ["UHID"]));
     }
 
     function aggregateRevenue(rows, labelColumn, amountColumn) {
@@ -874,7 +906,7 @@
       const max = Math.max(...items.map(item => item.value), 1);
       const rows = items.slice(0, 20).map(item => `
         <div class="graph-row">
-          <div class="graph-label" title="${item.label}">${item.label}</div>
+          <div class="graph-label" title="${escapeHtml(item.label)}">${escapeHtml(item.label)}</div>
           <div class="graph-track"><div class="graph-bar ${type} ${item.value === 0 ? "empty" : ""}" style="width:${item.value / max * 100}%"></div></div>
           <div class="graph-value">${item.display || (isCurrency ? currencyFormat(item.value, 2) : item.value)}</div>
         </div>`).join("");
@@ -935,6 +967,15 @@
         .map(row => ({...row, serviceCategory: serviceCategory(row[serviceName])}))
         .filter(row => row.serviceCategory);
       const serviceCounts = aggregateRowCount(categorizedService, "serviceCategory");
+      const serviceCategoryRevenue = new Map();
+      categorizedService.forEach(row => {
+        const amount = numericAmount(row[findColumn(row, ["Service Final Amt"])]);
+        if (amount !== null) serviceCategoryRevenue.set(row.serviceCategory, (serviceCategoryRevenue.get(row.serviceCategory) || 0) + amount);
+      });
+      const serviceCountRevenue = serviceCounts.map(item => ({
+        ...item,
+        display: `${item.value} | ${currencyFormat(serviceCategoryRevenue.get(item.label) || 0, 2)}`
+      }));
       const visitType = findColumn(serviceSample, ["Visit Type Name"]);
       const visitRows = service.filter(row => {
         const type = String(row[visitType] || "").trim().toLowerCase();
@@ -962,11 +1003,10 @@
         ["1. Panel-wise Patient Count", "Discharge Report • unique UHID", graphRows(aggregate(discharge, dischargePanel, dischargeUhid))],
         ["2. Doctor-Department Patient Count", "Discharge Report • unique UHID", graphRows(doctorDeptCounts)],
         ["3. Panel-wise Active Patients", "IPD List • non-standard panels grouped as TPA", graphRows([...panelActive].map(([label, ids]) => ({label, value: ids.size})), "purple")],
-        ["4. Doctor-Department Revenue", "Discharge Report • Service Final Amt", graphRows(aggregateRevenue(discharge.map(row => ({...row, doctorDept: doctorDept(row)})), "doctorDept", dischargeAmount), "red", true)],
+        ["4. Doctor-Department IPD Revenue", "Discharge Report • IPD Revenue", graphRows(aggregateRevenue(discharge.map(row => ({...row, doctorDept: doctorDept(row)})), "doctorDept", dischargeAmount), "red", true)],
         ["5. ICU / NICU + Ventilator", "IPD List + Helper Sheet", graphRows([{label:"ICU",value:(activeRoom.get("ICU") || new Set()).size},{label:"NICU",value:(activeRoom.get("NICU") || new Set()).size},{label:"Ventilator Usage",value:latestVentilator}], "count", false, "", false)],
-        ["6. Doctor-wise Revenue", "Bill Report • Service Final Amt", graphRows(aggregateRevenue(bill, billDoctor, billAmount), "red", true)],
         ["7. PATIENT COUNT & REVENUE BY SERVICE REPORT", "Service Report • DC and OPD unique UHID + Service Final Amt", graphRows(serviceCombined, "count", false, `${visitCounts.reduce((sum, item) => sum + item.value, 0)} patients | ${currencyFormat(serviceTotalRevenue, 2)}`)],
-        ["8. Daily Service Count Analysis", "Service Report • common service categories + unique UHID", graphRows(serviceCounts, "gold")]
+        ["8. Daily Service Count Analysis", "Service Report • service row count + sum of Final Service Amt", graphRows(serviceCountRevenue, "gold", false, `${serviceCounts.reduce((sum, item) => sum + item.value, 0)} rows | ${currencyFormat(serviceTotalRevenue, 2)}`)]
       ];
       document.getElementById("chartsSection").innerHTML = cards.map(card => `<div class="card graph-card"><h3>${card[0]}</h3><p>${card[1]}</p><div class="graph-list">${card[2]}</div></div>`).join("");
     }
@@ -998,23 +1038,12 @@
       });
     }
 
-    function uniqueAggregate(rows, labelColumn, idColumn) {
-      return aggregate(rows, labelColumn, idColumn);
-    }
-
     function periodLineChart(labels, actual, target) {
       const max = Math.max(...actual, ...target, 1);
       const points = values => values.map((value, index) => `${20 + index * (260 / Math.max(values.length - 1, 1))},${125 - (value / max * 105)}`).join(" ");
       const labelsHtml = labels.map((label, index) => `<span>${label}</span>`).join("");
-      const valueHtml = labels.map((label, index) => `<span>${label}<strong>${currencyFormat(actual[index], 0)} / ${currencyFormat(target[index], 0)}</strong></span>`).join("");
-      return `<div class="period-line-chart"><svg viewBox="0 0 300 145" role="img" aria-label="Revenue versus target revenue"><line x1="20" y1="125" x2="280" y2="125" stroke="#dfe5ef"/><polyline fill="none" stroke="#4285e8" stroke-width="3" points="${points(actual)}"/><polyline fill="none" stroke="#ef5a5a" stroke-width="3" points="${points(target)}"/>${actual.map((value, index) => `<circle cx="${20 + index * (260 / Math.max(actual.length - 1, 1))}" cy="${125 - (value / max * 105)}" r="3" fill="#4285e8"/>`).join("")}${target.map((value, index) => `<circle cx="${20 + index * (260 / Math.max(target.length - 1, 1))}" cy="${125 - (value / max * 105)}" r="3" fill="#ef5a5a"/>`).join("")}</svg><div class="line-labels">${labelsHtml}</div><div class="line-values">${valueHtml}</div><div class="line-legend"><span class="actual">Revenue</span><span class="target">Target</span></div></div>`;
-    }
-
-    function availableMonths(rows, dateColumn) {
-      return [...new Set(rows.map(row => {
-        const date = excelDate(row[dateColumn]);
-        return date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` : "";
-      }).filter(Boolean))].sort();
+      const valueHtml = labels.map((label, index) => `<span>${label}<strong><em class="actual-value">${currencyFormat(actual[index], 0)}</em><em class="target-value">${currencyFormat(target[index], 0)}</em></strong></span>`).join("");
+      return `<div class="period-line-chart"><svg viewBox="0 0 300 145" role="img" aria-label="Revenue versus target revenue"><line x1="20" y1="125" x2="280" y2="125" stroke="#dfe5ef"/><polyline fill="none" stroke="#4285e8" stroke-width="3" points="${points(actual)}"/><polyline fill="none" stroke="#ef5a5a" stroke-width="3" points="${points(target)}"/>${actual.map((value, index) => `<circle cx="${20 + index * (260 / Math.max(actual.length - 1, 1))}" cy="${125 - (value / max * 105)}" r="3" fill="#4285e8"/>`).join("")}${target.map((value, index) => `<circle cx="${20 + index * (260 / Math.max(target.length - 1, 1))}" cy="${125 - (value / max * 105)}" r="3" fill="#ef5a5a"/>`).join("")}</svg><div class="line-labels">${labelsHtml}</div><div class="line-values">${valueHtml}</div><div class="line-legend"><span class="actual">Achieved Revenue</span><span class="target">Target</span></div></div>`;
     }
 
     function renderMultiDayCharts() {
@@ -1023,34 +1052,33 @@
       const service = sourceRows(["service"]);
       const sample = discharge[0] || admission[0] || service[0] || {};
       const dischargeUhid = findColumn(sample, ["UHID"]);
-      const admissionUhid = findColumn(admission[0] || {}, ["UHID"]);
+      const dischargeFileId = findColumn(discharge[0] || {}, ["File Id", "File ID"]);
       const serviceUhid = findColumn(service[0] || {}, ["UHID"]);
       const dischargeDate = findColumn(discharge[0] || {}, ["DOD"]);
       const admissionDate = findColumn(admission[0] || {}, ["DATE", "Doa", "DOA"]);
+      const normalizedDischargePanel = row => {
+        const value = String(row[dischargePanel] || "").trim().toUpperCase();
+        if (!value) return "TPA";
+        if (value.includes("AYUSHMAN")) return "AYUSHMAN";
+        if (value === "CAPF") return "CAPF";
+        if (value === "ECHS") return "ECHS";
+        if (value === "ESIC" || value === "ESI") return "ESIC";
+        if (value === "CGHS") return "CGHS";
+        if (value.includes("DELHI POLICE")) return "DELHI POLICE";
+        if (value === "CASH") return "CASH";
+        return "TPA";
+      };
       const serviceDate = findColumn(service[0] || {}, ["DATE", "Service Date"]);
       const range = periodDateRange(discharge, ["DOD"]);
-      const months = availableMonths(discharge, dischargeDate);
-      const monthSelect = document.getElementById("weeklyMonthSelect");
-      if (months.length) {
-        if (!selectedWeeklyMonth || !months.includes(selectedWeeklyMonth)) selectedWeeklyMonth = months[months.length - 1];
-        monthSelect.innerHTML = months.map(month => `<option value="${month}">${month}</option>`).join("");
-        monthSelect.value = selectedWeeklyMonth;
-      }
-      if (currentPeriod === "weekly" && selectedWeeklyMonth) {
-        const [year, month] = selectedWeeklyMonth.split("-").map(Number);
-        range.start = new Date(year, month - 1, 1);
-        range.end = new Date(year, month, 0, 23, 59, 59, 999);
-      }
       const monthDischarge = rowsInDateRange(discharge, dischargeDate, range.start, range.end);
       const monthAdmission = rowsInDateRange(admission, admissionDate, range.start, range.end);
-      const monthService = rowsInDateRange(service, serviceDate, range.start, range.end);
       const slots = [
         {label: "1–10", key: "1-10"},
         {label: "11–20", key: "11-20"},
         {label: "21–month-end", key: "21-end"}
       ];
+      const monthService = rowsInDateRange(service, serviceDate, range.start, range.end);
       const slotDischarge = slots.map(slot => slotRows(monthDischarge, dischargeDate, slot.key));
-      const slotAdmission = slots.map(slot => slotRows(monthAdmission, admissionDate, slot.key));
       const slotService = slots.map(slot => slotRows(monthService, serviceDate, slot.key));
       const dischargePanel = findColumn(discharge[0] || {}, ["Panel Name"]);
       const dischargeDoctor = findColumn(discharge[0] || {}, ["Doctor Name"]);
@@ -1060,7 +1088,6 @@
       const admissionDoctor = findColumn(admission[0] || {}, ["Doctor Name"]);
       const admissionDept = findColumn(admission[0] || {}, ["Dept. Name"]);
       const serviceName = findColumn(service[0] || {}, ["Service Name"]);
-      const serviceDoctor = findColumn(service[0] || {}, ["Doctor Name"]);
       const serviceDept = findColumn(service[0] || {}, ["Dept. Name"]);
       const doctorDept = (row, doctorColumn, deptColumn) => {
         const doctor = String(row[doctorColumn] || "").trim();
@@ -1068,16 +1095,17 @@
         return doctor || dept ? `${doctor || "Unknown"} - ${dept || "Unknown"}` : "";
       };
       const consultationRows = monthService.filter(row => /\bconsult(ation)?\b/i.test(String(row[serviceName] || "")));
-      const consultationByService = aggregateUhidByLabel(consultationRows, serviceName, serviceUhid);
-      const consultationByDepartment = aggregateUhidByLabel(consultationRows, serviceDept, serviceUhid);
+      const consultationByService = aggregateRowCount(consultationRows, serviceName);
+      const consultationByDepartment = aggregateRowCount(consultationRows, serviceDept);
       const dischargeDoctorDept = monthDischarge.map(row => ({...row, doctorDept: doctorDept(row, dischargeDoctor, dischargeDept)}));
       const admissionDoctorDept = monthAdmission.map(row => ({...row, doctorDept: doctorDept(row, admissionDoctor, admissionDept)}));
-      const dischargeDoctorDeptCounts = aggregateUhidByLabel(dischargeDoctorDept, "doctorDept", dischargeUhid);
-      const admissionDoctorDeptCounts = aggregateUhidByLabel(admissionDoctorDept, "doctorDept", admissionUhid);
+      const dischargeCountColumn = dischargeFileId || dischargeUhid;
+      const dischargeDoctorDeptCounts = aggregateUhidByLabel(dischargeDoctorDept, "doctorDept", dischargeCountColumn);
+      const admissionDoctorDeptCounts = aggregateAdmissionByLabel(admissionDoctorDept, "doctorDept");
       const sumBySlot = (rows, amountColumn) => rows.map(slot => slot.reduce((sum, row) => sum + (numericAmount(row[amountColumn]) || 0), 0));
       const revenueSlots = sumBySlot(slotDischarge, dischargeAmount);
       const grandRevenue = revenueSlots.reduce((sum, value) => sum + value, 0);
-      const countSlots = slotDischarge.map(rows => new Set(rows.map(row => String(row[dischargeUhid] || "").trim()).filter(Boolean)).size);
+      const countSlots = slotDischarge.map(rows => new Set(rows.map(row => String(row[dischargeCountColumn] || "").trim()).filter(Boolean)).size);
       const grandCount = countSlots.reduce((sum, value) => sum + value, 0);
       const labelsWithGrand = [...slots.map(slot => slot.label), "Grand Total"];
       const bars = (values, isCurrency = false, color = "") => graphRows(
@@ -1087,77 +1115,63 @@
         color, isCurrency, "", false
       );
       const panelItems = [];
-      const panelGroups = currentPeriod === "weekly"
-        ? slotDischarge.map((rows, index) => ({label: slots[index].label, rows}))
-        : [{label: "", rows: monthDischarge}];
+      const panelGroups = [{label: "", rows: monthDischarge}];
       panelGroups.forEach(group => {
-        [...new Set(group.rows.map(row => String(row[dischargePanel] || "").trim()).filter(Boolean))].forEach(label => {
-          const rows = group.rows.filter(row => String(row[dischargePanel] || "").trim() === label);
+        const panelLabels = [...new Set(group.rows.map(row => normalizedDischargePanel(row)).filter(Boolean))];
+        panelLabels.forEach(label => {
+        const rows = group.rows.filter(row => normalizedDischargePanel(row) === label);
           const revenue = rows.reduce((sum, row) => sum + (numericAmount(row[dischargeAmount]) || 0), 0);
           const credit = rows.reduce((sum, row) => sum + (numericAmount(row[creditDue]) || 0), 0);
-          panelItems.push({label: group.label ? `${group.label} • ${label}` : label, value: revenue, credit});
+          panelItems.push({slot: group.label, panel: label, value: revenue, credit});
         });
       });
-      panelItems.sort((a, b) => b.value - a.value);
-      const dateRevenue = new Map();
-      [...monthDischarge.map(row => ({row, amountColumn: dischargeAmount})), ...monthService.map(row => ({row, amountColumn: findColumn(row, ["Service Final Amt"])}))].forEach(({row, amountColumn}) => {
-        const date = excelDate(row[dischargeDate]);
-        const serviceDateValue = excelDate(row[serviceDate]);
-        const effectiveDate = serviceDateValue || date;
-        const amount = numericAmount(row[amountColumn]);
-        if (effectiveDate && amount !== null) {
-          const label = effectiveDate.toLocaleDateString("en-IN");
-          dateRevenue.set(label, (dateRevenue.get(label) || 0) + amount);
-        }
-      });
-      const dateRevenueItems = [...dateRevenue.entries()].map(([label, value]) => ({label, value})).sort((a, b) => new Date(a.label.split("/").reverse().join("-")) - new Date(b.label.split("/").reverse().join("-")));
-      const revenueTrendItems = dateRevenueItems.length <= 2
-        ? [{label: "Slot 1", value: dateRevenueItems.reduce((sum, item) => sum + item.value, 0)}]
-        : dateRevenueItems;
+      panelItems.sort((a, b) => slots.findIndex(slot => slot.label === a.slot) - slots.findIndex(slot => slot.label === b.slot) || b.value - a.value);
+      const revenueTrendItems = slots.map((slot, index) => ({
+        label: slot.label,
+        value: revenueSlots[index] + slotService[index].reduce((sum, row) => sum + (numericAmount(row[findColumn(row, ["Service Final Amt"])]) || 0), 0)
+      }));
       const target = 50000000;
       const serviceRevenue = monthService.reduce((sum, row) => sum + (numericAmount(row[findColumn(row, ["Service Final Amt"])]) || 0), 0);
       const combinedRevenue = grandRevenue + serviceRevenue;
-      const actualSlots = currentPeriod === "weekly" ? revenueSlots.map((value, index) => value + slotService[index].reduce((sum, row) => sum + (numericAmount(row[findColumn(row, ["Service Final Amt"])]) || 0), 0)) : [combinedRevenue];
+      const actualSlots = revenueSlots.map((value, index) => value + slotService[index].reduce((sum, row) => sum + (numericAmount(row[findColumn(row, ["Service Final Amt"])]) || 0), 0));
       const cumulativeActual = actualSlots.reduce((values, value) => values.concat((values[values.length - 1] || 0) + value), []);
-      const targetValues = currentPeriod === "weekly" ? [12500000, 25000000, 37500000, target] : [target];
-      const revenueValues = currentPeriod === "weekly" ? [...cumulativeActual, grandRevenue] : [grandRevenue];
-      const targetLabels = currentPeriod === "weekly" ? ["Week 1", "Week 2", "Week 3", "Grand Total"] : ["Complete month"];
+      const targetValues = [target / 3, target * 2 / 3, target];
+      const revenueValues = cumulativeActual;
+      const targetLabels = slots.map(slot => slot.label);
       const categorizedService = monthService.map(row => ({...row, serviceCategory: serviceCategory(row[serviceName])})).filter(row => row.serviceCategory);
-      const serviceCategoryItems = new Map();
-      categorizedService.forEach(row => {
-        const category = row.serviceCategory;
-        if (!serviceCategoryItems.has(category)) serviceCategoryItems.set(category, new Set());
-        const id = String(row[serviceUhid] || "").trim();
-        if (id) serviceCategoryItems.get(category).add(id);
-      });
-      const serviceCategories = aggregateUhidByLabel(categorizedService, "serviceCategory", serviceUhid);
       const panelColumnMax = Math.max(...panelItems.flatMap(item => [item.value, item.credit]), 1);
       const panelColumnRows = panelItems.map(item => {
-        const label = item.label.replace(" • ", " / ");
+        const label = item.panel;
         const revenueHeight = Math.max(item.value / panelColumnMax * 100, item.value ? 4 : 0);
         const creditHeight = Math.max(item.credit / panelColumnMax * 100, item.credit ? 4 : 0);
-        return `<div class="panel-column-group"><div class="panel-column-values"><span class="panel-value-tag panel-revenue-tag">${currencyFormat(item.value, 0)}</span><span class="panel-value-tag panel-credit-tag">${currencyFormat(item.credit, 0)}</span></div><div class="panel-column-bars"><span class="panel-revenue" style="height:${revenueHeight}%"></span><span class="panel-credit" style="height:${creditHeight}%"></span></div><div class="panel-column-label" title="${item.label}">${label}</div></div>`;
+        return `<div class="panel-column-group"><div class="panel-column-values"><span class="panel-value-tag panel-revenue-tag">${currencyFormat(item.value, 0)}</span><span class="panel-value-tag panel-credit-tag">${currencyFormat(item.credit, 0)}</span></div><div class="panel-column-bars"><span class="panel-revenue" style="height:${revenueHeight}%"></span><span class="panel-credit" style="height:${creditHeight}%"></span></div><div class="panel-column-label" title="${label}">${label}</div></div>`;
       }).join("");
+      const panelGrandRevenue = panelItems.reduce((sum, item) => sum + item.value, 0);
+      const panelGrandCredit = panelItems.reduce((sum, item) => sum + item.credit, 0);
+      const dischargeSlotCountChart = dischargeFileId
+        ? bars(countSlots, false, "purple")
+        : '<div style="color:var(--muted);font-size:13px">File Id column not found in Discharge Report.</div>';
       const cards = [
-        ["1. Admission UHID Count", "Admission Report • uploaded data panel-wise unique UHID", graphRows(aggregateUhidByLabel(monthAdmission, findColumn(admission[0] || {}, ["Panel Name"]), admissionUhid))],
-        ["2. Discharge UHID Count", "Discharge Report • panel-wise unique UHID", graphRows(aggregateUhidByLabel(monthDischarge, dischargePanel, dischargeUhid))],
-        ["3. Doctor-Department Discharge UHID Count", "Discharge Report • doctor + department unique UHID", graphRows(dischargeDoctorDeptCounts)],
-        ["4. Doctor-Department Admission UHID Count", "Admission Report • doctor + department unique UHID", graphRows(admissionDoctorDeptCounts)],
-        ["5. Department-wise Consultation UHID Count", "Service Report • consultation grouped by department", graphRows(consultationByDepartment)],
-        ["6. Consultation Service UHID Count", "Service Report • service names containing consultation", graphRows(consultationByService)],
-        ["7. Doctor-Department Final Service Amount", "Discharge Report • sum of Final Service Amt", graphRows(aggregateRevenue(dischargeDoctorDept, "doctorDept", dischargeAmount), "red", true)],
-        ["8. Discharge Count by 10-day Slot", "Discharge Report • 1–10, 11–20 and 21–month-end", bars(countSlots, false, "purple")],
-        ["9. Discharge Revenue by 10-day Slot", "Discharge Report • Final Service Amt by slot", bars(revenueSlots, true, "red")],
-        ["10. Revenue Trend", "Discharge + Service Final Service Amt • Slot 1 for 1–2 dates, date-wise for 3+ dates", graphRows(revenueTrendItems, "gold", true)],
-        ["11. Service Category Row Count", `Service Report • all service rows by category (Total ${monthService.length})`, graphRows(aggregateRowCount(categorizedService, "serviceCategory"), "gold")],
-        ["12. Target vs Revenue", `Target ₹5 crore • Achieved ${currencyFormat(combinedRevenue, 0)} • Remaining ${currencyFormat(Math.max(target - combinedRevenue, 0), 0)}`, periodLineChart(targetLabels, revenueValues, targetValues)],
-        ["13. Panel Revenue and Credit Due", "Column chart • Revenue / Credit Due", `<div class="panel-chart-legend"><span class="revenue-key">Revenue</span><span class="credit-key">Credit Due</span></div>${panelColumnRows ? `<div class="panel-columns">${panelColumnRows}</div>` : '<div style="color:var(--muted)">No data uploaded for this period.</div>'}`]
+        ["1. IPD Admission", "Admission Report • panel-wise unique UHID • duplicate records excluded", graphRows(aggregateAdmissionByLabel(monthAdmission, findColumn(admission[0] || {}, ["Panel Name"])), "count", false, admissionUhidCount(monthAdmission))],
+        ["2. IPD Discharge", "Discharge Report • panel-wise File Id", graphRows(aggregateUhidByLabel(monthDischarge, dischargePanel, dischargeCountColumn))],
+        ["3. Doc-Dept Wise Discharge", "Discharge Report • doctor + department File Id", graphRows(dischargeDoctorDeptCounts)],
+        ["4. Doc-Dept Wise Admission", "Admission Report • doctor + department unique UHID • duplicate records excluded", graphRows(admissionDoctorDeptCounts, "count", false, admissionUhidCount(monthAdmission))],
+        ["5. Department-wise Consultation", "Service Report • consultation row count grouped by department", graphRows(consultationByDepartment)],
+        ["6. Consultation Service", "Service Report • consultation row count by service", graphRows(consultationByService)],
+        ["7. Doc-Dept Wise IPD Revenue", "Discharge Report • sum of IPD Revenue", graphRows(aggregateRevenue(dischargeDoctorDept, "doctorDept", dischargeAmount), "red", true)],
+        ["8. Discharge Count by 10-day Slot", "Discharge Report • unique File Id by 1–10, 11–20 and 21–month-end", dischargeSlotCountChart],
+        ["9. IPD Revenue by 10-day Slot", "Discharge Report • IPD Revenue by slot", bars(revenueSlots, true, "red")],
+        ["10. Revenue Trend", "IPD Revenue + Service Revenue • all three 10-day slots", graphRows(revenueTrendItems, "gold", true)],
+        ["11. Total Services", `Service Report • all service rows by category (Total ${monthService.length})`, graphRows(aggregateRowCount(categorizedService, "serviceCategory"), "gold")],
+        ["12. Target vs Revenue", `Target ₹5 crore • IPD Revenue + Service Revenue achieved ${currencyFormat(combinedRevenue, 0)} • Remaining ${currencyFormat(Math.max(target - combinedRevenue, 0), 0)}`, periodLineChart(targetLabels, revenueValues, targetValues)],
+        ["13. Panel Revenue and Credit Due", "Discharge Report • panel-wise IPD Revenue and Credit Due", `<div class="panel-grand-total">Grand Total: <strong>${currencyFormat(panelGrandRevenue, 0)} IPD Revenue | ${currencyFormat(panelGrandCredit, 0)} Credit Due</strong></div><div class="panel-chart-legend"><span class="revenue-key">IPD Revenue</span><span class="credit-key">Credit Due</span></div>${panelColumnRows ? `<div class="panel-columns">${panelColumnRows}</div>` : '<div style="color:var(--muted)">No data uploaded for this period.</div>'}`]
       ];
       const wideCardIndex = cards.findIndex(([title]) => title.startsWith("13."));
-      const wideCardClass = wideCardIndex >= 0 ? " wide" : "";
       document.getElementById("chartsSection").innerHTML = cards.map((card, index) => {
         const isWide = index === wideCardIndex;
-        return `<div class="card graph-card${isWide ? " wide" : ""}"><h3>${card[0]}</h3><p>${card[1]}</p><div class="graph-list">${card[2]}</div></div>`;
+        const hasGrandTotal = [0, 1, 2, 3, 4, 6].includes(index);
+        const hasLineChart = index === 11;
+        return `<div class="card graph-card${isWide ? " wide" : ""}${hasGrandTotal ? " has-grand-total" : ""}${hasLineChart ? " has-line-chart" : ""}"><h3>${card[0]}</h3><p>${card[1]}</p><div class="graph-list">${card[2]}</div></div>`;
       }).join("");
     }
 
@@ -1190,10 +1204,11 @@
 
     function sourceRows(names) {
       const matches = uploadedFiles.filter(file => names.some(part => classifyFile(file.name) === part));
-      return matches.reduce((all, file) => {
+      const rows = matches.reduce((all, file) => {
         const sheet = file.workbook.Sheets[file.activeSheet || file.workbook.SheetNames[0]];
         return all.concat(XLSX.utils.sheet_to_json(sheet, { defval: "" }));
       }, []);
+      return rows;
     }
 
     function rowsForCurrentPeriod(rows) {
@@ -1217,7 +1232,9 @@
         renderDefaultData();
         return;
       }
-      uploadedFiles = periodFiles[currentPeriod];
+      uploadedFiles = dashboardMode === "multi-day"
+        ? uploadedFiles
+        : periodFiles[currentPeriod];
       const masterFile = uploadedFiles.find(file => classifyFile(file.name) === "master");
       dashboardWorkbook = (masterFile && masterFile.workbook) || uploadedFiles[0]?.workbook || dashboardWorkbook;
       const admissionRows = rowsForPeriod(sourceRows(["admission"]), ["DATE"]);
@@ -1263,7 +1280,7 @@
         revenue: periodKpis.revenue, expenses: 0, claims: 0,
         admissions: periodKpis.admissions,
         discharges: periodKpis.discharges,
-        opdCount: nonEmptyCount(serviceRows, ["UHID"]),
+        opdCount: consultationRowCount(serviceRows),
         activePatients: activePatientIds.size,
         averageRevenue: periodKpis.averageRevenue,
         bedOccupancy: activeRows.length / 155 * 100,
@@ -1305,6 +1322,45 @@
       await loadDashboard();
     }
 
+    let notificationItems = [
+      {title: "Dashboard synced", message: "Latest hospital data loaded successfully.", time: "Just now", type: "success"},
+      {title: "Upload complete", message: "Daily files were processed and dashboard refreshed.", time: "5 min ago", type: "info"}
+    ];
+
+    function renderNotifications() {
+      const list = document.getElementById("notificationList");
+      const badge = document.getElementById("notificationBadge");
+      if (!list) return;
+
+      list.innerHTML = notificationItems.map(item => `
+        <div class="notification-item ${item.type}">
+          <small>${escapeHtml(item.time)}</small>
+          <strong>${escapeHtml(item.title)}</strong>
+          <p>${escapeHtml(item.message)}</p>
+        </div>
+      `).join("");
+
+      if (badge) {
+        const count = notificationItems.length;
+        badge.textContent = String(count);
+        badge.style.display = count > 0 ? "grid" : "none";
+      }
+    }
+
+    function addNotification(title, message, type = "info") {
+      notificationItems.unshift({ title, message, time: "Just now", type });
+      notificationItems = notificationItems.slice(0, 6);
+      renderNotifications();
+    }
+
+    function toggleNotifications(forceOpen) {
+      const drawer = document.getElementById("notificationDrawer");
+      if (!drawer) return;
+      const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !drawer.classList.contains("open");
+      drawer.classList.toggle("open", shouldOpen);
+      drawer.setAttribute("aria-hidden", String(!shouldOpen));
+    }
+
     document.getElementById("loginForm").addEventListener("submit", login);
     document.getElementById("logoutBtn").addEventListener("click", async () => {
       await fetch("/api/logout", {method: "POST"});
@@ -1319,15 +1375,25 @@
       loadSettings();
       document.getElementById("settingsStatus").textContent = "Settings reset to default.";
     });
-    document.getElementById("notificationBtn").addEventListener("click", () => toggleNotifications());
-    document.getElementById("notificationClose").addEventListener("click", () => toggleNotifications(false));
+    const notificationBtn = document.getElementById("notificationBtn");
+    const notificationClose = document.getElementById("notificationClose");
+    if (notificationBtn) {
+      notificationBtn.addEventListener("click", () => toggleNotifications());
+    }
+    if (notificationClose) {
+      notificationClose.addEventListener("click", () => toggleNotifications(false));
+    }
     document.addEventListener("click", (event) => {
       const drawer = document.getElementById("notificationDrawer");
       const button = document.getElementById("notificationBtn");
-      if (drawer && button && !drawer.contains(event.target) && event.target !== button && !button.contains(event.target)) {
+      if (!drawer || !button) return;
+      if (!drawer.contains(event.target) && event.target !== button && !button.contains(event.target)) {
         drawer.classList.remove("open");
         drawer.setAttribute("aria-hidden", "true");
       }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") toggleNotifications(false);
     });
     document.getElementById("downloadDashboardBtn").addEventListener("click", () => {
       const period = currentPeriod.charAt(0).toUpperCase() + currentPeriod.slice(1);
@@ -1348,4 +1414,3 @@
     restorePeriodFiles().then(() => {
       if (!uploadedFiles.length) loadDashboard();
     });
-  
