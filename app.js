@@ -125,10 +125,10 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
 
     function renderPeriodKpis(kpis) {
       const cards = [
-        ["IPD Admissions", kpis.admissions, "Admission Report • UHID count", "▲ 12.4%"],
-        ["IPD Discharge", kpis.discharges, "Discharge Report • panel-wise File Id count", "▲ 8.2%"],
-        ["Total Revenue", currencyFormat(kpis.revenue, 2), "Discharge + Service • Final Service Amt", "▲ 5.3%"],
-        ["Cash Due", currencyFormat(kpis.cashDue, 2), "Discharge Report • Cash Due", "▼ 2.1%"],
+        ["IPD Admissions", kpis.admissions, "Admission Report • UHID count"],
+        ["IPD Discharge", kpis.discharges, "Discharge Report • panel-wise File Id count"],
+        ["Total Revenue", currencyFormat(kpis.revenue, 2), "Discharge + Service • Final Service Amt"],
+        ["Cash Due", currencyFormat(kpis.cashDue, 2), "Discharge Report • Cash Due"],
         ["Credit Due", currencyFormat(kpis.creditDue, 2), "Discharge Report • Credit Due"],
         ["OPD Consultation", kpis.serviceRows, "Service Report • all consultation rows"],
         ["IPD Avg Revenue / Patient", currencyFormat(kpis.averageRevenue, 2), "Discharge Report • average Final Service Amt"],
@@ -305,6 +305,15 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
       document.querySelectorAll(".section-panel").forEach(panel => {
         panel.classList.toggle("hidden", panel.dataset.section !== target);
       });
+      const isOverview = target === "overview";
+      document.getElementById("downloadDashboardBtn").style.display = isOverview ? "none" : "";
+      document.querySelectorAll(".period-button").forEach(item => {
+        item.classList.toggle("active", isOverview && item.dataset.period === "saved");
+      });
+      if (isOverview) {
+        document.getElementById("dashboardTitle").textContent = "Saved Dashboards";
+        document.getElementById("dashboardSubtitle").textContent = "Daily and Monthly dashboard archive";
+      }
     }
 
     function loadSettings() {
@@ -350,6 +359,13 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
     }
 
     function selectPeriod(period) {
+      if (period === "saved") {
+        document.querySelectorAll(".period-button").forEach(item => item.classList.toggle("active", item.dataset.period === "saved"));
+        document.querySelectorAll(".nav-item").forEach(item => item.classList.toggle("active", item.dataset.target === "overview"));
+        showSection("overview");
+        loadSavedDashboards();
+        return;
+      }
       const requestedPeriod = period;
       if (period === "multi-day") {
         dashboardMode = "multi-day";
@@ -468,8 +484,11 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
         const target = item.dataset.target;
         if (item.dataset.period) {
           selectPeriod(item.dataset.period);
+        } else if (target === "overview") {
+          showSection("overview");
+          loadSavedDashboards();
         }
-        showSection(target);
+        if (target !== "overview") showSection(target);
       });
 
       document.querySelectorAll(".period-button").forEach(button => {
@@ -536,21 +555,42 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
       return btoa(binary);
     }
 
+    let periodFilesSavePromise = Promise.resolve();
+
     function savePeriodFiles() {
       const dailySaved = {daily: periodFiles.daily.map(file => ({name: file.name, data: file.data}))};
       const multiDaySaved = {weekly: periodFiles.weekly.map(file => ({name: file.name, data: file.data})), monthly: periodFiles.monthly.map(file => ({name: file.name, data: file.data}))};
       try {
         localStorage.setItem("horizonCareDailyDashboardFiles", JSON.stringify(dailySaved));
         localStorage.setItem("horizonCareMultiDayDashboardFiles", JSON.stringify(multiDaySaved));
+        localStorage.removeItem("horizonCarePeriodFiles");
       } catch (error) {
         console.warn("Large dashboard files will use IndexedDB persistence:", error);
       }
-      const request = indexedDB.open("horizonCareDashboard", 1);
-      request.onupgradeneeded = () => request.result.createObjectStore("files");
-      request.onsuccess = () => {
-        const transaction = request.result.transaction("files", "readwrite");
-        transaction.objectStore("files").put({daily: dailySaved.daily, weekly: multiDaySaved.weekly, monthly: multiDaySaved.monthly}, "uploaded");
-      };
+      periodFilesSavePromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open("horizonCareDashboard", 1);
+        request.onupgradeneeded = () => request.result.createObjectStore("files");
+        request.onerror = () => reject(request.error || new Error("IndexedDB could not be opened"));
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction("files", "readwrite");
+          transaction.oncomplete = () => {
+            database.close();
+            resolve();
+          };
+          transaction.onerror = () => {
+            database.close();
+            reject(transaction.error || new Error("Dashboard files could not be saved"));
+          };
+          transaction.objectStore("files").put(
+            {daily: dailySaved.daily, weekly: multiDaySaved.weekly, monthly: multiDaySaved.monthly},
+            "uploaded"
+          );
+        };
+      }).catch(error => {
+        console.error("Dashboard files could not be persisted:", error);
+      });
+      return periodFilesSavePromise;
     }
 
     async function restorePeriodFiles() {
@@ -595,7 +635,7 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
       }
 
       for (const period of Object.keys(periodFiles)) {
-        const items = restored[period].length ? restored[period] : legacySaved[period] || [];
+        const items = savedFiles ? restored[period] : restored[period].length ? restored[period] : legacySaved[period] || [];
         periodFiles[period] = [];
         for (const file of items) {
           const binary = atob(file.data);
@@ -655,13 +695,13 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
         `;
 
         container.querySelectorAll(".remove-file").forEach(button => {
-          button.addEventListener("click", () => {
+          button.addEventListener("click", async () => {
             const period = button.dataset.period;
             const fileName = button.dataset.file;
             const periodFilesList = periodFiles[period] || [];
             const index = periodFilesList.findIndex(file => file.name === fileName);
             if (index >= 0) periodFilesList.splice(index, 1);
-            savePeriodFiles();
+            await savePeriodFiles();
             renderFileList();
             if (currentPeriod === period) {
               uploadedFiles = periodFilesList;
@@ -834,6 +874,21 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
       return [...values.entries()].map(([label, value]) => ({label, value})).sort((a, b) => b.value - a.value);
     }
 
+    function aggregateDateCount(rows, dateColumn) {
+      const values = new Map();
+      rows.forEach(row => {
+        const date = excelDate(row[dateColumn]);
+        if (!date) return;
+        const label = date.toLocaleDateString("en-IN");
+        values.set(label, (values.get(label) || 0) + 1);
+      });
+      return [...values.entries()].map(([label, value]) => ({label, value})).sort((a, b) => {
+        const [dayA, monthA, yearA] = a.label.split("/").map(Number);
+        const [dayB, monthB, yearB] = b.label.split("/").map(Number);
+        return new Date(yearA, monthA - 1, dayA) - new Date(yearB, monthB - 1, dayB);
+      });
+    }
+
     function aggregatePanelDateUhid(rows, dateColumn, panelColumn, uhidColumn) {
       const values = new Map();
       rows.forEach(row => {
@@ -901,10 +956,11 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
       return "Lab Test";
     }
 
-    function graphRows(items, type = "count", isCurrency = false, totalDisplay = "", showTotal = true) {
+    function graphRows(items, type = "count", isCurrency = false, totalDisplay = "", showTotal = true, maxItems = 20) {
       if (!items.length) return '<div style="color:var(--muted);font-size:13px">No data uploaded for this period.</div>';
       const max = Math.max(...items.map(item => item.value), 1);
-      const rows = items.slice(0, 20).map(item => `
+      const visibleItems = maxItems === null ? items : items.slice(0, maxItems);
+      const rows = visibleItems.map(item => `
         <div class="graph-row">
           <div class="graph-label" title="${escapeHtml(item.label)}">${escapeHtml(item.label)}</div>
           <div class="graph-track"><div class="graph-bar ${type} ${item.value === 0 ? "empty" : ""}" style="width:${item.value / max * 100}%"></div></div>
@@ -1085,6 +1141,7 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
       const dischargeDept = findColumn(discharge[0] || {}, ["Dept. Name"]);
       const dischargeAmount = findColumn(discharge[0] || {}, ["Service Final Amt"]);
       const creditDue = findColumn(discharge[0] || {}, ["Credit Due"]);
+      const admissionPanel = findColumn(admission[0] || {}, ["Panel Name"]);
       const admissionDoctor = findColumn(admission[0] || {}, ["Doctor Name"]);
       const admissionDept = findColumn(admission[0] || {}, ["Dept. Name"]);
       const serviceName = findColumn(service[0] || {}, ["Service Name"]);
@@ -1097,6 +1154,7 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
       const consultationRows = monthService.filter(row => /\bconsult(ation)?\b/i.test(String(row[serviceName] || "")));
       const consultationByService = aggregateRowCount(consultationRows, serviceName);
       const consultationByDepartment = aggregateRowCount(consultationRows, serviceDept);
+      const consultationByDate = aggregateDateCount(consultationRows, serviceDate);
       const dischargeDoctorDept = monthDischarge.map(row => ({...row, doctorDept: doctorDept(row, dischargeDoctor, dischargeDept)}));
       const admissionDoctorDept = monthAdmission.map(row => ({...row, doctorDept: doctorDept(row, admissionDoctor, admissionDept)}));
       const dischargeCountColumn = dischargeFileId || dischargeUhid;
@@ -1138,7 +1196,22 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
       const targetValues = [target / 3, target * 2 / 3, target];
       const revenueValues = cumulativeActual;
       const targetLabels = slots.map(slot => slot.label);
-      const categorizedService = monthService.map(row => ({...row, serviceCategory: serviceCategory(row[serviceName])})).filter(row => row.serviceCategory);
+      const categorizedService = monthService
+        .map(row => ({...row, serviceCategory: serviceCategory(row[serviceName])}))
+        .filter(row => row.serviceCategory && row.serviceCategory !== "Consultation");
+      const normalizedPanel = value => {
+        const panel = String(value || "").trim().toUpperCase();
+        if (panel.includes("AYUSHMAN")) return "AYUSHMAN";
+        if (panel === "CAPF") return "CAPF";
+        if (panel === "ECHS") return "ECHS";
+        if (panel === "ESIC" || panel === "ESI") return "ESIC";
+        if (panel === "CGHS") return "CGHS";
+        if (panel.includes("DELHI POLICE")) return "DELHI POLICE";
+        if (panel === "CASH") return "CASH";
+        return "TPA";
+      };
+      const normalizedAdmission = monthAdmission.map(row => ({...row, normalizedPanel: normalizedPanel(row[admissionPanel])}));
+      const normalizedDischarge = monthDischarge.map(row => ({...row, normalizedPanel: normalizedPanel(row[dischargePanel])}));
       const panelColumnMax = Math.max(...panelItems.flatMap(item => [item.value, item.credit]), 1);
       const panelColumnRows = panelItems.map(item => {
         const label = item.panel;
@@ -1152,26 +1225,27 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
         ? bars(countSlots, false, "purple")
         : '<div style="color:var(--muted);font-size:13px">File Id column not found in Discharge Report.</div>';
       const cards = [
-        ["1. IPD Admission", "Admission Report • panel-wise unique UHID • duplicate records excluded", graphRows(aggregateAdmissionByLabel(monthAdmission, findColumn(admission[0] || {}, ["Panel Name"])), "count", false, admissionUhidCount(monthAdmission))],
-        ["2. IPD Discharge", "Discharge Report • panel-wise File Id", graphRows(aggregateUhidByLabel(monthDischarge, dischargePanel, dischargeCountColumn))],
-        ["3. Doc-Dept Wise Discharge", "Discharge Report • doctor + department File Id", graphRows(dischargeDoctorDeptCounts)],
-        ["4. Doc-Dept Wise Admission", "Admission Report • doctor + department unique UHID • duplicate records excluded", graphRows(admissionDoctorDeptCounts, "count", false, admissionUhidCount(monthAdmission))],
-        ["5. Department-wise Consultation", "Service Report • consultation row count grouped by department", graphRows(consultationByDepartment)],
-        ["6. Consultation Service", "Service Report • consultation row count by service", graphRows(consultationByService)],
-        ["7. Doc-Dept Wise IPD Revenue", "Discharge Report • sum of IPD Revenue", graphRows(aggregateRevenue(dischargeDoctorDept, "doctorDept", dischargeAmount), "red", true)],
-        ["8. Discharge Count by 10-day Slot", "Discharge Report • unique File Id by 1–10, 11–20 and 21–month-end", dischargeSlotCountChart],
-        ["9. IPD Revenue by 10-day Slot", "Discharge Report • IPD Revenue by slot", bars(revenueSlots, true, "red")],
-        ["10. Revenue Trend", "IPD Revenue + Service Revenue • all three 10-day slots", graphRows(revenueTrendItems, "gold", true)],
-        ["11. Total Services", `Service Report • all service rows by category (Total ${monthService.length})`, graphRows(aggregateRowCount(categorizedService, "serviceCategory"), "gold")],
-        ["12. Target vs Revenue", `Target ₹5 crore • IPD Revenue + Service Revenue achieved ${currencyFormat(combinedRevenue, 0)} • Remaining ${currencyFormat(Math.max(target - combinedRevenue, 0), 0)}`, periodLineChart(targetLabels, revenueValues, targetValues)],
-        ["13. Panel Revenue and Credit Due", "Discharge Report • panel-wise IPD Revenue and Credit Due", `<div class="panel-grand-total">Grand Total: <strong>${currencyFormat(panelGrandRevenue, 0)} IPD Revenue | ${currencyFormat(panelGrandCredit, 0)} Credit Due</strong></div><div class="panel-chart-legend"><span class="revenue-key">IPD Revenue</span><span class="credit-key">Credit Due</span></div>${panelColumnRows ? `<div class="panel-columns">${panelColumnRows}</div>` : '<div style="color:var(--muted)">No data uploaded for this period.</div>'}`]
+        ["1. Panel Wise IPD Admission", "Admission Report • panel-wise unique UHID; other panels grouped as TPA", graphRows(aggregateAdmissionByLabel(normalizedAdmission, "normalizedPanel"), "count", false, admissionUhidCount(monthAdmission))],
+        ["2. Panel Wise IPD Discharge", "Discharge Report • panel-wise File Id; other panels grouped as TPA", graphRows(aggregateUhidByLabel(normalizedDischarge, "normalizedPanel", dischargeCountColumn))],
+        ["3. Doc & Dept Wise IPD Discharge", "Discharge Report • doctor + department File Id", graphRows(dischargeDoctorDeptCounts)],
+        ["4. Doc & Dept Wise IPD Admission", "Admission Report • doctor + department unique UHID; duplicate records excluded", graphRows(admissionDoctorDeptCounts, "count", false, admissionUhidCount(monthAdmission))],
+        ["5. Dept Wise OPD Consultation", "Service Report • consultation row count grouped by department", graphRows(consultationByDepartment)],
+        ["6. OPD Consultation", "Service Report • consultation row count by date", graphRows(consultationByDate, "count", false, "", true, null)],
+        ["7. Doc & Dept Wise IPD Revenue", "Discharge Report • sum of IPD Revenue", graphRows(aggregateRevenue(dischargeDoctorDept, "doctorDept", dischargeAmount), "red", true)],
+        ["8. Period Wise IPD Discharge", "Discharge Report • unique File Id by 1–10, 11–20 and 21–month-end", dischargeSlotCountChart],
+        ["9. Period Wise IPD Revenue", "Discharge Report • IPD Revenue by period", bars(revenueSlots, true, "red")],
+        ["10. Period Wise Total Revenue", "IPD Revenue + OPD Revenue by period", graphRows(revenueTrendItems, "gold", true)],
+        ["11. OPD Services", `Service Report • non-consultation service rows by category (Total ${categorizedService.length})`, graphRows(aggregateRowCount(categorizedService, "serviceCategory"), "gold")],
+        ["12. Cumulative Revenue vs Target", `Target ₹5 crore • IPD Revenue + OPD Revenue achieved ${currencyFormat(combinedRevenue, 0)} • Remaining ${currencyFormat(Math.max(target - combinedRevenue, 0), 0)}`, periodLineChart(targetLabels, revenueValues, targetValues)],
+        ["13. Panel Wise IPD Revenue and Outstanding", "Discharge Report • panel-wise IPD Revenue and Outstanding", `<div class="panel-grand-total">Grand Total: <strong>${currencyFormat(panelGrandRevenue, 0)} IPD Revenue | ${currencyFormat(panelGrandCredit, 0)} Outstanding</strong></div><div class="panel-chart-legend"><span class="revenue-key">IPD Revenue</span><span class="credit-key">Outstanding</span></div>${panelColumnRows ? `<div class="panel-columns">${panelColumnRows}</div>` : '<div style="color:var(--muted)">No data uploaded for this period.</div>'}`]
       ];
       const wideCardIndex = cards.findIndex(([title]) => title.startsWith("13."));
       document.getElementById("chartsSection").innerHTML = cards.map((card, index) => {
         const isWide = index === wideCardIndex;
-        const hasGrandTotal = [0, 1, 2, 3, 4, 6].includes(index);
+        const hasGrandTotal = [0, 1, 2, 3, 4, 5, 6].includes(index);
         const hasLineChart = index === 11;
-        return `<div class="card graph-card${isWide ? " wide" : ""}${hasGrandTotal ? " has-grand-total" : ""}${hasLineChart ? " has-line-chart" : ""}"><h3>${card[0]}</h3><p>${card[1]}</p><div class="graph-list">${card[2]}</div></div>`;
+        const hasDateChart = index === 5;
+        return `<div class="card graph-card${isWide ? " wide" : ""}${hasGrandTotal ? " has-grand-total" : ""}${hasLineChart ? " has-line-chart" : ""}${hasDateChart ? " has-date-chart" : ""}"><h3>${card[0]}</h3><p>${card[1]}</p><div class="graph-list">${card[2]}</div></div>`;
       }).join("");
     }
 
@@ -1320,6 +1394,129 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
       document.getElementById("authOverlay").classList.add("hidden");
       document.getElementById("loginPassword").value = "";
       await loadDashboard();
+      await loadSavedDashboards();
+    }
+
+    function renderSavedDashboardGroup(containerId, title, dashboards, type) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = `
+        <div class="storage-header">
+          <h4>${title}</h4>
+          <span class="storage-badge">${dashboards.length} saved</span>
+        </div>
+        <div class="storage-list">
+          ${dashboards.length ? dashboards.map(item => `
+            <div class="saved-dashboard-item">
+              <div><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.period_label)} • ${escapeHtml(new Date(item.created_at + "Z").toLocaleString())}</small></div>
+              <div class="saved-dashboard-actions">
+                <button type="button" class="secondary-button open-saved-dashboard" data-id="${item.id}">Open</button>
+                <button type="button" class="secondary-button delete-saved-dashboard" data-id="${item.id}" aria-label="Delete ${escapeHtml(item.name)}">Delete</button>
+              </div>
+            </div>
+          `).join("") : '<div class="file-item"><small style="color:var(--muted)">No saved dashboards yet.</small></div>'}
+        </div>
+      `;
+      container.querySelectorAll(".open-saved-dashboard").forEach(button => {
+        button.addEventListener("click", () => openSavedDashboard(button.dataset.id));
+      });
+      container.querySelectorAll(".delete-saved-dashboard").forEach(button => {
+        button.addEventListener("click", () => deleteSavedDashboard(button.dataset.id));
+      });
+    }
+
+    async function loadSavedDashboards() {
+      try {
+        const response = await fetch("/api/saved-dashboards");
+        if (response.status === 401) return;
+        if (!response.ok) throw new Error("Saved dashboard list failed");
+        const dashboards = await response.json();
+        renderSavedDashboardGroup("dailyDashboardStorage", "Daily Storage", dashboards.filter(item => item.dashboard_type === "daily"), "daily");
+        renderSavedDashboardGroup("monthlyDashboardStorage", "Monthly Storage", dashboards.filter(item => item.dashboard_type === "monthly"), "monthly");
+      } catch (error) {
+        console.error("Saved dashboards could not be loaded:", error);
+      }
+    }
+
+    function dashboardSnapshot() {
+      return {
+        statsHTML: document.getElementById("statsSection").innerHTML,
+        chartsHTML: document.getElementById("chartsSection").innerHTML,
+        title: document.getElementById("dashboardTitle").textContent,
+        subtitle: document.getElementById("dashboardSubtitle").textContent,
+        periodLabel: document.getElementById("periodLabel").textContent,
+        dashboardMode,
+        currentPeriod,
+        compact: document.body.classList.contains("dashboard-compact"),
+        cleanCharts: document.body.classList.contains("dashboard-clean")
+      };
+    }
+
+    async function saveDashboardAs() {
+      const name = window.prompt("Save dashboard as:");
+      if (!name || !name.trim()) return;
+      const dashboardType = dashboardMode === "daily" ? "daily" : "monthly";
+      const button = document.getElementById("saveDashboardBtn");
+      button.disabled = true;
+      try {
+        const response = await fetch("/api/saved-dashboards", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            name: name.trim(),
+            dashboard_type: dashboardType,
+            period_label: document.getElementById("periodLabel").textContent,
+            snapshot: dashboardSnapshot()
+          })
+        });
+        if (response.status === 401) {
+          showLogin();
+          return;
+        }
+        if (!response.ok) throw new Error((await response.json()).error || "Save failed");
+        await loadSavedDashboards();
+        addNotification("Dashboard saved", `${name.trim()} was added to ${dashboardType === "daily" ? "Daily" : "Monthly"} Storage.`, "success");
+      } catch (error) {
+        console.error("Dashboard could not be saved:", error);
+        addNotification("Save failed", error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function openSavedDashboard(id) {
+      try {
+        const response = await fetch(`/api/saved-dashboards/${encodeURIComponent(id)}`);
+        if (!response.ok) throw new Error("Saved dashboard could not be opened");
+        const saved = await response.json();
+        const snapshot = saved.snapshot;
+        document.getElementById("statsSection").innerHTML = snapshot.statsHTML;
+        document.getElementById("chartsSection").innerHTML = snapshot.chartsHTML;
+        document.getElementById("dashboardTitle").textContent = snapshot.title;
+        document.getElementById("dashboardSubtitle").textContent = snapshot.subtitle;
+        document.getElementById("periodLabel").textContent = snapshot.periodLabel;
+        dashboardMode = snapshot.dashboardMode;
+        currentPeriod = snapshot.currentPeriod;
+        document.body.classList.toggle("dashboard-compact", snapshot.compact === true);
+        document.body.classList.toggle("dashboard-clean", snapshot.cleanCharts === true);
+        showSection("dashboard");
+        addNotification("Dashboard opened", saved.name, "info");
+      } catch (error) {
+        console.error("Saved dashboard could not be opened:", error);
+        addNotification("Open failed", error.message, "error");
+      }
+    }
+
+    async function deleteSavedDashboard(id) {
+      if (!window.confirm("Delete this saved dashboard?")) return;
+      try {
+        const response = await fetch(`/api/saved-dashboards/${encodeURIComponent(id)}`, {method: "DELETE"});
+        if (!response.ok) throw new Error("Saved dashboard could not be deleted");
+        await loadSavedDashboards();
+      } catch (error) {
+        console.error("Saved dashboard could not be deleted:", error);
+        addNotification("Delete failed", error.message, "error");
+      }
     }
 
     let notificationItems = [
@@ -1369,6 +1566,7 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
     document.getElementById("applyMappingBtn").addEventListener("click", applySelectedMapping);
     document.getElementById("loadDefaultBtn").addEventListener("click", loadDefaultDashboardData);
     document.getElementById("saveSettingsBtn").addEventListener("click", saveSettings);
+    document.getElementById("saveDashboardBtn").addEventListener("click", saveDashboardAs);
     document.getElementById("resetSettingsBtn").addEventListener("click", () => {
       dashboardSettings = {density: "comfortable", notifications: "on", chartDetail: "full", refresh: "off"};
       localStorage.removeItem("horizonCareSettings");
@@ -1395,22 +1593,10 @@ const periodFiles = { daily: [], weekly: [], monthly: [] };
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") toggleNotifications(false);
     });
-    document.getElementById("downloadDashboardBtn").addEventListener("click", () => {
-      const period = currentPeriod.charAt(0).toUpperCase() + currentPeriod.slice(1);
-      const copy = document.documentElement.cloneNode(true);
-      copy.querySelectorAll("script").forEach(script => script.remove());
-      const authOverlay = copy.querySelector("#authOverlay");
-      if (authOverlay) authOverlay.classList.add("hidden");
-      const blob = new Blob([`<!DOCTYPE html>\n${copy.outerHTML}`], {type: "text/html;charset=utf-8"});
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `SURYA-Hospital-${period}-Dashboard.html`;
-      link.click();
-      URL.revokeObjectURL(link.href);
-    });
-
     renderNotifications();
     loadSettings();
+    showSection("overview");
     restorePeriodFiles().then(() => {
       if (!uploadedFiles.length) loadDashboard();
+      loadSavedDashboards();
     });
