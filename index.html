@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SURYA Hospital Multi Super Speciality</title>
   <script src="/xlsx.full.min.js"></script>
+  <script>window.dashboardAssetVersion = "20260915-2";</script>
     <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -43,19 +44,19 @@
 
       <div class="nav-title">Overview</div>
 
-      <button class="nav-item active" data-target="dashboard">
+      <button class="nav-item active" data-target="overview">
         <div class="nav-icon">⌂</div>
-        <div>Dashboard</div>
+        <div>Saved Dashboards</div>
       </button>
 
       <button class="nav-item" data-target="dashboard" data-period="daily">
         <div class="nav-icon">▣</div>
-        <div>Daily Dashboard</div>
+        <div>Daily</div>
       </button>
 
       <button class="nav-item" data-target="dashboard" data-period="multi-day">
         <div class="nav-icon">▥</div>
-        <div>Multi-Day Analysis</div>
+        <div>Multi-Day</div>
       </button>
 
       <button class="nav-item" data-target="upload">
@@ -88,8 +89,9 @@
 
         <div class="top-actions">
           <div class="period-controls" aria-label="Dashboard period">
-            <button class="period-button active" data-period="daily" type="button">Daily</button>
+            <button class="period-button" data-period="daily" type="button">Daily</button>
             <button class="period-button" data-period="multi-day" type="button">Multi-Day</button>
+            <button class="period-button active" data-period="saved" type="button">Saved Dashboards</button>
           </div>
           <button class="header-button" id="downloadDashboardBtn" type="button">Download Dashboard</button>
           <button class="notify" id="notificationBtn" type="button" aria-label="Notifications">
@@ -99,16 +101,28 @@
         </div>
       </header>
 
-      <div class="section-panel" data-section="dashboard">
+      <div class="section-panel hidden" data-section="dashboard">
         <div class="dashboard-toolbar">
-          <div class="data-source">Showing <strong id="periodLabel">Daily</strong> data from Admission, Discharge, Bill, Service and IPD sheets</div>
+          <div class="data-source" id="periodLabel" aria-hidden="true" style="display:none">Daily</div>
         <div style="display:flex;align-items:center;gap:12px">
+          <button class="secondary-button" id="saveDashboardBtn" type="button">Save As</button>
           <button class="primary-button" id="periodUploadBtn" type="button">Upload Daily Files</button>
         </div>
         </div>
         <section class="stats" id="statsSection"></section>
         <section class="charts-grid" id="chartsSection" aria-label="Dashboard charts"></section>
 
+      </div>
+
+      <div class="section-panel" data-section="overview">
+        <div class="overview-heading">
+          <h2>Saved Dashboards</h2>
+          <p>Open a previously saved Daily or Monthly dashboard.</p>
+        </div>
+        <section class="storage-grid overview-storage" aria-label="Saved dashboards">
+          <div class="storage-group" id="dailyDashboardStorage"></div>
+          <div class="storage-group" id="monthlyDashboardStorage"></div>
+        </section>
       </div>
 
       <div class="section-panel hidden" data-section="upload">
@@ -245,6 +259,55 @@
     </main>
   </div>
 
-    <script src="/app.js"></script>
+    <script src="/app.js?v=20260915-2"></script>
+    <style>
+      #downloadDashboardBtn{cursor:pointer;user-select:none}
+      #downloadDashboardBtn:disabled{opacity:.65;cursor:wait}
+    </style>
+    <script>
+      (function () {
+        var button = document.getElementById("downloadDashboardBtn");
+        if (!button) return;
+        button.addEventListener("click", function () {
+          if (button.disabled) return;
+          button.disabled = true;
+          try {
+            var copy = document.documentElement.cloneNode(true);
+            copy.querySelectorAll("script").forEach(function (script) { script.remove(); });
+            var authOverlay = copy.querySelector("#authOverlay");
+            if (authOverlay) authOverlay.remove();
+            copy.querySelectorAll("link[rel='stylesheet']").forEach(function (link) { link.remove(); });
+            var css = "";
+            Array.prototype.forEach.call(document.styleSheets, function (sheet) {
+              try {
+                css += Array.prototype.map.call(sheet.cssRules, function (rule) { return rule.cssText; }).join("\n");
+              } catch (error) {
+                console.warn("Could not inline one stylesheet during export:", error);
+              }
+            });
+            var inlineStyles = copy.createElement ? copy.createElement("style") : document.createElement("style");
+            inlineStyles.textContent = css;
+            copy.querySelector("head").appendChild(inlineStyles);
+            var html = "<!DOCTYPE html>\n" + copy.outerHTML;
+            var blob = new Blob([html], {type:"text/html;charset=utf-8"});
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement("a");
+            link.href = url;
+            link.download = "SURYA-Hospital-Dashboard.html";
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(function () {
+              URL.revokeObjectURL(url);
+              link.remove();
+              button.disabled = false;
+            }, 1500);
+          } catch (error) {
+            console.error("Dashboard download failed:", error);
+            button.disabled = false;
+          }
+        });
+      }());
+    </script>
 </body>
 </html>
